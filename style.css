@@ -815,3 +815,168 @@ a {
     font-size: 20px;
   }
 }
+
+@media (max-width: 768px) {
+  .games-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .game-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    min-height: auto;
+    border-radius: 16px;
+    background: #1a1a30;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .game-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .game-card .game-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    border-radius: 12px;
+    margin: 0 14px 0 0;
+    flex-shrink: 0;
+  }
+
+  .game-card .game-info {
+    flex: 1;
+    text-align: left;
+  }
+
+  .game-card .game-name {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 0;
+    color: #ffffff;
+  }
+
+  .game-card .game-desc {
+    display: none;
+  }
+
+  .game-card .game-tags {
+    display: none;
+  }
+
+  .game-card .game-link {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    background: var(--neon-pink);
+    color: #ffffff;
+    border-radius: 30px;
+    gap: 4px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    transition: 0.2s;
+  }
+
+  .game-card .game-link i {
+    font-size: 11px;
+  }
+
+  .game-card .game-link:hover {
+    gap: 4px;
+    transform: none;
+    background: #ff4d8a;
+  }
+
+  .hero-title {
+    font-size: 32px;
+  }
+
+  .hero-desc {
+    font-size: 16px;
+  }
+
+  .hero-emoji {
+    font-size: 80px;
+  }
+
+  .floating-emoji {
+    font-size: 28px;
+  }
+
+  .emoji-1 {
+    top: 5%;
+    right: 5%;
+  }
+  .emoji-2 {
+    bottom: 10%;
+    left: 5%;
+  }
+  .emoji-3 {
+    display: none;
+  }
+
+  .section-title {
+    font-size: 28px;
+  }
+
+  .section-desc {
+    font-size: 15px;
+  }
+
+  .stat-number {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .footer-social {
+    justify-content: center;
+  }
+
+  .footer-social a {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .footer-bottom {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  .game-card {
+    padding: 12px 14px;
+  }
+
+  .game-card .game-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+    margin-right: 10px;
+  }
+
+  .game-card .game-name {
+    font-size: 14px;
+  }
+
+  .game-card .game-link {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+}
