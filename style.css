@@ -314,13 +314,13 @@ a {
   padding: 28px 20px;
   border-radius: 24px;
   border: 2px solid rgba(255, 255, 255, 0.08);
-  text-align: center;
+  text-align: left;
   transition: 0.3s;
   cursor: pointer;
-  min-height: 240px;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
@@ -347,12 +347,14 @@ a {
   font-weight: 700;
   color: #ffffff;
   margin-bottom: 4px;
+  text-align: center;
 }
 
 .game-desc {
   color: #c0c0d0;
   font-size: 14px;
   margin-bottom: 14px;
+  text-align: center;
 }
 
 .game-tags {
@@ -372,6 +374,15 @@ a {
   color: #d0d0d0;
 }
 
+.game-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  justify-content: space-between;
+}
+
 .game-link {
   display: inline-flex;
   align-items: center;
@@ -380,6 +391,8 @@ a {
   font-weight: 600;
   font-size: 14px;
   transition: 0.3s;
+  margin-top: 16px;
+  align-self: center;
 }
 
 .game-link:hover {
@@ -1082,6 +1095,76 @@ a {
 }
 
 @media (max-width: 768px) {
+  .games-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .game-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    min-height: 60px;
+    padding: 12px;
+    background: #1a1a30;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .game-icon {
+    flex-shrink: 0;
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    font-size: 28px;
+    margin: 0;
+  }
+
+  .game-info {
+    flex: 1;
+    gap: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    height: 0px;
+  }
+
+  .game-name {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+  }
+
+  .game-desc {
+    display: none;
+  }
+
+  .game-tags {
+    display: none;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+
+  .game-link {
+    flex-shrink: 0;
+    font-size: 12px;
+    margin: 0;
+    padding: 6px 12px;
+    background: rgba(255, 45, 117, 0.15);
+    border-radius: 20px;
+    align-self: center;
+    white-space: nowrap;
+  }
+
   .mode-selection {
     flex-direction: column;
     gap: 20px;
