@@ -353,15 +353,19 @@
 
       multiplayer.onDataReceived = function(data) {
         console.log('[DATA RECEIVED]', data);
-
+  
         if (data.type === 'move') {
           handleOpponentMove(data);
         } else if (data.type === 'name') {
           opponentName = data.name;
           p2Label.textContent = opponentName;
           updateConnectionStatus('Connected to ' + opponentName, 'connected');
-          enableChoices(true);
-          resultMsg.textContent = 'Pick your move!';
+          
+          if (amIHost) {
+            setTimeout(function() {
+              multiplayer.send({ type: 'name', name: playerName });
+            }, 300);
+          }
         } else if (data.type === 'reset') {
           resetGame();
         }
@@ -370,9 +374,13 @@
       multiplayer.onPeerConnected = function() {
         isConnected = true;
         console.log('[PEER] Connected to opponent');
-        setTimeout(function() {
-          multiplayer.send({ type: 'name', name: playerName });
-        }, 500);
+        
+        if (!amIHost) {
+          setTimeout(function() {
+            multiplayer.send({ type: 'name', name: playerName });
+          }, 300);
+        }
+        
         enableChoices(true);
         resultMsg.textContent = 'Pick your move!';
         updateConnectionStatus('Connected to ' + (opponentName || 'opponent'), 'connected');
