@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeonPoi · Tic-Tac-Toe</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <div class="nav-brand">
+        <i class="fas fa-gamepad"></i>
+        <span>NeonPoi <span style="color: #ff2d75;">Arcade</span></span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="#" class="active">Games</a></li>
+      </ul>
+      <button class="nav-toggle" id="navToggle">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+  </nav>
+
+  <section class="game-page">
+    <div class="container">
+      <div class="game-header">
+        <a href="../index.html" class="back-link">
+          <i class="fas fa-arrow-left"></i> Back to Home
+        </a>
+        <h1 class="game-title">❌ Tic-Tac-Toe ⭕</h1>
+        <p class="game-subtitle">Choose your mode and start playing</p>
+      </div>
+
+      <div id="modeSelection" class="mode-selection">
+        <div class="mode-card" onclick="selectMode('single')">
+          <div class="mode-icon">🎮</div>
+          <h3>Singleplayer</h3>
+          <p>VS Computer</p>
+          <span class="mode-tag">Offline</span>
+          <button class="btn btn-primary">Play Solo</button>
+        </div>
+        <div class="mode-divider">OR</div>
+        <div class="mode-card" onclick="selectMode('multi')">
+          <div class="mode-icon">👥</div>
+          <h3>Multiplayer</h3>
+          <p>VS Friend Online</p>
+          <span class="mode-tag">Online</span>
+          <button class="btn btn-primary">Play Together</button>
+        </div>
+      </div>
+
+      <div id="multiplayerControls" style="display:none;">
+        <hr style="border-color:rgba(255,255,255,0.06);margin:24px 0;" />
+
+        <div class="multiplayer-header">
+          <i class="fas fa-wifi"></i>
+          <span>Multiplayer Connection</span>
+        </div>
+
+        <div class="multiplayer-grid">
+          <div class="multiplayer-card">
+            <div class="multiplayer-card-header">
+              <i class="fas fa-plus-circle" style="color:var(--neon-blue);"></i>
+              <h4>Create Room</h4>
+            </div>
+            <p class="multiplayer-desc">Host a game and invite a friend</p>
+            <div class="multiplayer-input-group">
+              <input type="text" id="playerName" placeholder="Your name" value="Player" />
+            </div>
+            <button id="createBtn" class="btn btn-primary btn-block">
+              <i class="fas fa-rocket"></i> Create Room
+            </button>
+            <div id="roomIdDisplay" class="room-id-display">
+              <span class="room-id-label">Room ID</span>
+              <span class="room-id-value">-</span>
+              <button class="btn-copy" id="copyRoomIdBtn" style="display:none;">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="multiplayer-divider">
+            <span>OR</span>
+          </div>
+
+          <div class="multiplayer-card">
+            <div class="multiplayer-card-header">
+              <i class="fas fa-sign-in-alt" style="color:var(--neon-pink);"></i>
+              <h4>Join Room</h4>
+            </div>
+            <p class="multiplayer-desc">Enter a room ID to join a friend</p>
+            <div class="multiplayer-input-group">
+              <input type="text" id="playerNameJoin" placeholder="Your name" value="Player" />
+              <input type="text" id="roomIdInput" placeholder="Enter Room ID" />
+            </div>
+            <button id="joinBtn" class="btn btn-secondary btn-block">
+              <i class="fas fa-door-open"></i> Join Room
+            </button>
+          </div>
+        </div>
+
+        <div id="connectionStatus" class="connection-status-modern">
+          <div class="status-dot disconnected"></div>
+          <span class="status-text">Not connected</span>
+        </div>
+      </div>
+
+      <div id="gameArea" class="game-container" style="display:none;">
+        <div class="game-area">
+          <div class="players" style="margin-bottom:8px;">
+            <div class="player">
+              <span class="player-label" id="p1Label">You (X)</span>
+              <div class="player-move" id="p1Move" style="font-size:32px;">❌</div>
+              <span class="player-score" id="p1Score">0</span>
+            </div>
+            <div class="vs">VS</div>
+            <div class="player">
+              <span class="player-label" id="p2Label">Opponent (O)</span>
+              <div class="player-move" id="p2Move" style="font-size:32px;">⭕</div>
+              <span class="player-score" id="p2Score">0</span>
+            </div>
+          </div>
+
+          <div class="game-info">
+            <div class="score" id="scoreLeft">X: <span id="scoreLeftValue">0</span></div>
+            <div class="score draw-score">Draw: <span id="drawScore">0</span></div>
+            <div class="score" id="scoreRight">O: <span id="scoreRightValue">0</span></div>
+          </div>
+
+          <div id="turnIndicator" class="turn-indicator">
+            Your turn (<span class="player-turn">X</span>)
+          </div>
+
+          <div id="gameStatus" class="game-status waiting">Make your move!</div>
+
+          <div class="board" id="board">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+          </div>
+
+          <button class="reset-btn-ttt" id="resetBtnTTT">
+            <i class="fas fa-undo"></i> New Game
+          </button>
+        </div>
+
+        <div class="history-section" id="historySection">
+          <h3>📜 History</h3>
+          <div class="history-list" id="historyList">
+            <p class="empty-history">No games played yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <i class="fas fa-gamepad"></i>
+          <span>NeonPoi Arcade</span>
+          <p>Built by Wimbi Yoas Hizkia</p>
+        </div>
+        <div class="footer-social">
+          <a href="https://github.com/neonpoi" target="_blank"><i class="fab fa-github"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-discord"></i></a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 NeonPoi &middot; Wimbi Yoas Hizkia</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+  <script src="../js/peer.js"></script>
+  <script>
+    var gameMode = null;
+    var board = Array(9).fill(null);
+    var currentPlayer = 'X';
+    var gameActive = true;
+    var isPlayerTurn = true;
+    var amIHost = false;
+    var mySymbol = 'X';
+    var opponentSymbol = 'O';
+
+    var xScore = 0;
+    var oScore = 0;
+    var drawScore = 0;
+    var gameHistory = [];
+
+    var playerMoves = [];
+    var opponentMoves = [];
+
+    var multiplayer = null;
+    var isConnected = false;
+    var playerName = '';
+    var opponentName = '';
+
+    var WIN_COMBOS = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    var modeSelection = document.getElementById('modeSelection');
+    var gameArea = document.getElementById('gameArea');
+    var multiplayerControls = document.getElementById('multiplayerControls');
+    var cells = document.querySelectorAll('.cell');
+    var turnIndicator = document.getElementById('turnIndicator');
+    var gameStatus = document.getElementById('gameStatus');
+    var p1Label = document.getElementById('p1Label');
+    var p2Label = document.getElementById('p2Label');
+    var p1Move = document.getElementById('p1Move');
+    var p2Move = document.getElementById('p2Move');
+    var p1Score = document.getElementById('p1Score');
+    var p2Score = document.getElementById('p2Score');
+    var scoreLeft = document.getElementById('scoreLeft');
+    var scoreRight = document.getElementById('scoreRight');
+    var scoreLeftValue = document.getElementById('scoreLeftValue');
+    var scoreRightValue = document.getElementById('scoreRightValue');
+    var drawScoreEl = document.getElementById('drawScore');
+    var historyList = document.getElementById('historyList');
+    var resetBtn = document.getElementById('resetBtnTTT');
+    var connectionStatus = document.getElementById('connectionStatus');
+    var roomIdDisplay = document.getElementById('roomIdDisplay');
+    var copyRoomIdBtn = document.getElementById('copyRoomIdBtn');
+
+    function updateBoard() {
+      for (var i = 0; i < 9; i++) {
+        cells[i].textContent = board[i] || '';
+        cells[i].className = 'cell';
+        if (board[i]) {
+          cells[i].classList.add('taken', board[i].toLowerCase());
+        }
+      }
+    }
+
+    function updateScores() {
+      drawScoreEl.textContent = drawScore;
+      
+      if (mySymbol === 'X') {
+        scoreLeft.innerHTML = 'X: <span id="scoreLeftValue">' + xScore + '</span>';
+        scoreRight.innerHTML = 'O: <span id="scoreRightValue">' + oScore + '</span>';
+        p1Score.textContent = xScore;
+        p2Score.textContent = oScore;
+      } else {
+        scoreLeft.innerHTML = 'O: <span id="scoreLeftValue">' + oScore + '</span>';
+        scoreRight.innerHTML = 'X: <span id="scoreRightValue">' + xScore + '</span>';
+        p1Score.textContent = oScore;
+        p2Score.textContent = xScore;
+      }
+    }
+
+    function updateTurnIndicator() {
+      if (!gameActive) return;
+      var symbol = currentPlayer;
+      var isMyTurn = (symbol === mySymbol);
+      var turnText = isMyTurn ? 'Your turn' : "Opponent's turn";
+      var turnClass = isMyTurn ? 'player-turn' : 'opponent-turn';
+      turnIndicator.innerHTML = turnText + ' (<span class="' + turnClass + '">' + symbol + '</span>)';
+    }
+
+    function setGameStatus(text, className) {
+      gameStatus.textContent = text;
+      gameStatus.className = 'game-status ' + (className || 'waiting');
+    }
+
+    function enableCells(enabled) {
+      cells.forEach(function(cell) {
+        cell.style.pointerEvents = enabled && !cell.classList.contains('taken') ? 'auto' : 'none';
+      });
+    }
+
+    function resetBoardUI() {
+      board = Array(9).fill(null);
+      playerMoves = [];
+      opponentMoves = [];
+      currentPlayer = 'X';
+      gameActive = true;
+      updateBoard();
+      cells.forEach(function(cell) {
+        cell.classList.remove('win');
+      });
+
+      if (gameMode === 'single') {
+        isPlayerTurn = true;
+        enableCells(true);
+        updateTurnIndicator();
+        setGameStatus('Make your move!', 'waiting');
+      } else if (gameMode === 'multi' && isConnected) {
+        isPlayerTurn = (mySymbol === 'X');
+        enableCells(isPlayerTurn);
+        updateTurnIndicator();
+        if (isPlayerTurn) {
+          setGameStatus('Make your move!', 'waiting');
+        } else {
+          setGameStatus('Waiting for opponent...', 'waiting');
+        }
+      }
+      updateScores();
+    }
+
+    function checkWinner() {
+      for (var i = 0; i < WIN_COMBOS.length; i++) {
+        var combo = WIN_COMBOS[i];
+        var a = board[combo[0]];
+        var b = board[combo[1]];
+        var c = board[combo[2]];
+        if (a && a === b && a === c) {
+          return { winner: a, combo: combo };
+        }
+      }
+      if (board.every(function(cell) { return cell !== null; })) {
+        return { winner: 'draw', combo: null };
+      }
+      return null;
+    }
+
+    function handleGameEnd(result) {
+      gameActive = false;
+      enableCells(false);
+
+      if (result.winner === 'draw') {
+        drawScore++;
+        setGameStatus("It's a draw! 🤝", 'draw');
+        addHistory('Draw');
+      } else {
+        if (result.winner === 'X') {
+          xScore++;
+        } else {
+          oScore++;
+        }
+        var isPlayerWin = (result.winner === mySymbol);
+        var winnerName = isPlayerWin ? 'You' : 'Opponent';
+        setGameStatus(winnerName + ' wins! 🎉', isPlayerWin ? 'win' : 'lose');
+        if (result.combo) {
+          result.combo.forEach(function(index) {
+            cells[index].classList.add('win');
+          });
+        }
+        addHistory(result.winner);
+      }
+      updateScores();
+      updateTurnIndicator();
+    }
+
+    function makeMove(index) {
+      if (!gameActive) return false;
+      if (board[index]) return false;
+      if (gameMode === 'multi' && !isPlayerTurn) return false;
+
+      var placedMark = currentPlayer;
+
+      if (currentPlayer === mySymbol) {
+        if (playerMoves.length >= 3) {
+          var oldIndex = playerMoves.shift();
+          board[oldIndex] = null;
+        }
+        playerMoves.push(index);
+      } else {
+        if (opponentMoves.length >= 3) {
+          var oldIndex = opponentMoves.shift();
+          board[oldIndex] = null;
+        }
+        opponentMoves.push(index);
+      }
+
+      board[index] = placedMark;
+      updateBoard();
+
+      var result = checkWinner();
+      if (result) {
+        handleGameEnd(result);
+        if (gameMode === 'multi' && isConnected) {
+          multiplayer.send({ type: 'gameEnd', result: result });
+        }
+        return true;
+      }
+
+      currentPlayer = (currentPlayer === 'X') ? 'O' : 'X';
+      updateTurnIndicator();
+
+      if (gameMode === 'single') {
+        isPlayerTurn = false;
+        enableCells(false);
+        setGameStatus('Computer is thinking...', 'waiting');
+        setTimeout(function() {
+          computerMove();
+        }, 600);
+      } else if (gameMode === 'multi' && isConnected) {
+        isPlayerTurn = false;
+        enableCells(false);
+        setGameStatus('Waiting for opponent...', 'waiting');
+        multiplayer.send({ type: 'move', index: index, player: placedMark });
+      }
+
+      return true;
+    }
+
+    function getEmptyCells() {
+      var empty = [];
+      for (var i = 0; i < 9; i++) {
+        if (!board[i]) empty.push(i);
+      }
+      return empty;
+    }
+
+    function minimax(board, depth, isMaximizing, player) {
+      var result = checkWinner();
+      if (result) {
+        if (result.winner === 'X') return 10 - depth;
+        if (result.winner === 'O') return depth - 10;
+        return 0;
+      }
+      if (depth === 0 || getEmptyCells().length === 0) return 0;
+
+      var empty = getEmptyCells();
+      if (isMaximizing) {
+        var best = -Infinity;
+        for (var i = 0; i < empty.length; i++) {
+          var idx = empty[i];
+          board[idx] = player;
+          var score = minimax(board, depth - 1, false, (player === 'X') ? 'O' : 'X');
+          board[idx] = null;
+          best = Math.max(best, score);
+        }
+        return best;
+      } else {
+        var worst = Infinity;
+        for (var j = 0; j < empty.length; j++) {
+          var idx2 = empty[j];
+          board[idx2] = player;
+          var score2 = minimax(board, depth - 1, true, (player === 'X') ? 'O' : 'X');
+          board[idx2] = null;
+          worst = Math.min(worst, score2);
+        }
+        return worst;
+      }
+    }
+
+    function computerMove() {
+      if (!gameActive) return;
+      
+      setTimeout(function() {
+        if (!gameActive) return;
+        
+        var empty = getEmptyCells();
+        if (empty.length === 0) return;
+
+        var aiPlayer = 'O';
+        var humanPlayer = 'X';
+        var bestScore = Infinity;
+        var bestMove = empty[0];
+
+        for (var i = 0; i < empty.length; i++) {
+          var idx = empty[i];
+          board[idx] = aiPlayer;
+          var score = minimax(board, 6, false, humanPlayer);
+          board[idx] = null;
+          if (score < bestScore) {
+            bestScore = score;
+            bestMove = idx;
+          }
+        }
+
+        if (bestScore === Infinity) {
+          bestMove = empty[Math.floor(Math.random() * empty.length)];
+        }
+
+        if (opponentMoves.length >= 3) {
+          var oldIndex = opponentMoves.shift();
+          board[oldIndex] = null;
+        }
+        opponentMoves.push(bestMove);
+
+        board[bestMove] = 'O';
+        updateBoard();
+
+        var result = checkWinner();
+        if (result) {
+          handleGameEnd(result);
+          return;
+        }
+
+        currentPlayer = 'X';
+        isPlayerTurn = true;
+        enableCells(true);
+        updateTurnIndicator();
+        setGameStatus('Make your move!', 'waiting');
+      }, 300);
+    }
+
+    function initMultiplayer() {
+      multiplayer = new Multiplayer();
+
+      multiplayer.onDataReceived = function(data) {
+        if (data.type === 'move') {
+          handleOpponentMove(data);
+        } else if (data.type === 'name') {
+          opponentName = data.name;
+          if (amIHost) {
+            p2Label.textContent = opponentName + ' (O)';
+          } else {
+            p2Label.textContent = opponentName + ' (X)';
+          }
+          updateConnectionStatus('Connected to ' + opponentName, 'connected');
+          if (amIHost) {
+            setTimeout(function() {
+              multiplayer.send({ type: 'name', name: playerName });
+            }, 300);
+          }
+        } else if (data.type === 'gameEnd') {
+          handleOpponentGameEnd(data.result);
+        } else if (data.type === 'reset') {
+          resetBoardUI();
+        }
+      };
+
+      multiplayer.onPeerConnected = function() {
+        isConnected = true;
+        multiplayerControls.style.display = 'none';
+        gameArea.style.display = 'grid';
+
+        playerMoves = [];
+        opponentMoves = [];
+
+        if (!amIHost) {
+          mySymbol = 'O';
+          opponentSymbol = 'X';
+          p1Label.textContent = 'You (O)';
+          p2Label.textContent = 'Opponent (X)';
+          p1Move.textContent = '⭕';
+          p2Move.textContent = '❌';
+          isPlayerTurn = false;
+          enableCells(false);
+          setGameStatus('Waiting for opponent...', 'waiting');
+          updateTurnIndicator();
+          setTimeout(function() {
+            multiplayer.send({ type: 'name', name: playerName });
+          }, 300);
+        } else {
+          mySymbol = 'X';
+          opponentSymbol = 'O';
+          p1Label.textContent = 'You (X)';
+          p2Label.textContent = 'Opponent (O)';
+          p1Move.textContent = '❌';
+          p2Move.textContent = '⭕';
+          isPlayerTurn = true;
+          enableCells(true);
+          setGameStatus('Make your move!', 'waiting');
+          updateTurnIndicator();
+        }
+
+        resetBoardUI();
+        updateConnectionStatus('Connected to ' + (opponentName || 'opponent'), 'connected');
+      };
+
+      multiplayer.onPeerDisconnected = function() {
+        isConnected = false;
+        gameArea.style.display = 'none';
+        multiplayerControls.style.display = 'block';
+        enableCells(false);
+        setGameStatus('Opponent disconnected', 'waiting');
+        updateConnectionStatus('Disconnected', 'disconnected');
+        opponentName = '';
+        p2Label.textContent = 'Opponent';
+        mySymbol = 'X';
+        opponentSymbol = 'O';
+        p1Label.textContent = 'You (X)';
+        p1Move.textContent = '❌';
+        p2Move.textContent = '⭕';
+        resetBoardUI();
+      };
+
+      multiplayer.onRoomCreated = function(id) {
+        amIHost = true;
+        var roomIdValue = roomIdDisplay.querySelector('.room-id-value');
+        if (roomIdValue) {
+          roomIdValue.textContent = id;
+        }
+        if (copyRoomIdBtn) {
+          copyRoomIdBtn.style.display = 'inline-flex';
+        }
+        updateConnectionStatus('Waiting for opponent...', 'connecting');
+        enableCells(false);
+        setGameStatus('Waiting for opponent to join...', 'waiting');
+      };
+
+      multiplayer.onJoinError = function(err) {
+        alert('Error: ' + err);
+        updateConnectionStatus('Error: ' + err, 'error');
+      };
+
+      document.getElementById('createBtn').addEventListener('click', function() {
+        var nameInput = document.getElementById('playerName');
+        playerName = nameInput.value || 'Player';
+        multiplayer.createRoom(playerName).catch(function(err) {
+          alert('Error: ' + err.message);
+        });
+      });
+
+      document.getElementById('joinBtn').addEventListener('click', function() {
+        var nameInput = document.getElementById('playerNameJoin');
+        var roomInput = document.getElementById('roomIdInput');
+        playerName = nameInput.value || 'Player';
+        var roomId = roomInput.value.trim();
+        if (!roomId) {
+          alert('Please enter Room ID');
+          return;
+        }
+        amIHost = false;
+        multiplayer.joinRoom(roomId, playerName).catch(function(err) {
+          alert('Error: ' + err.message);
+        });
+      });
+
+      if (copyRoomIdBtn) {
+        copyRoomIdBtn.addEventListener('click', function() {
+          var roomIdValue = roomIdDisplay.querySelector('.room-id-value');
+          if (roomIdValue && roomIdValue.textContent !== '-') {
+            navigator.clipboard.writeText(roomIdValue.textContent).then(function() {
+              var icon = copyRoomIdBtn.querySelector('i');
+              icon.className = 'fas fa-check';
+              setTimeout(function() {
+                icon.className = 'fas fa-copy';
+              }, 2000);
+            });
+          }
+        });
+      }
+    }
+
+    function handleOpponentMove(data) {
+      if (!gameActive) return;
+      var index = data.index;
+      var player = data.player;
+
+      if (board[index]) return;
+
+      if (opponentMoves.length >= 3) {
+        var oldIndex = opponentMoves.shift();
+        board[oldIndex] = null;
+      }
+      opponentMoves.push(index);
+
+      board[index] = player;
+      currentPlayer = player;
+      updateBoard();
+
+      var result = checkWinner();
+      if (result) {
+        handleGameEnd(result);
+        return;
+      }
+
+      currentPlayer = (currentPlayer === 'X') ? 'O' : 'X';
+      isPlayerTurn = true;
+      enableCells(true);
+      updateTurnIndicator();
+      setGameStatus('Make your move!', 'waiting');
+    }
+
+    function handleOpponentGameEnd(result) {
+      if (result.winner === 'draw') {
+        drawScore++;
+        setGameStatus("It's a draw! 🤝", 'draw');
+        addHistory('Draw');
+      } else {
+        if (result.winner === 'X') {
+          xScore++;
+        } else {
+          oScore++;
+        }
+        var isPlayerWin = (result.winner === mySymbol);
+        var winnerName = isPlayerWin ? 'You' : 'Opponent';
+        setGameStatus(winnerName + ' wins! 🎉', isPlayerWin ? 'win' : 'lose');
+        if (result.combo) {
+          result.combo.forEach(function(index) {
+            cells[index].classList.add('win');
+          });
+        }
+        addHistory(result.winner);
+      }
+      gameActive = false;
+      enableCells(false);
+      updateScores();
+      updateTurnIndicator();
+    }
+
+    function addHistory(winner) {
+      var resultText = '';
+      var resultClass = '';
+      if (winner === 'Draw') {
+        resultText = '⚖️ Draw';
+        resultClass = 'draw';
+      } else if (winner === mySymbol) {
+        resultText = '✅ Win';
+        resultClass = 'win';
+      } else {
+        resultText = '❌ Lose';
+        resultClass = 'lose';
+      }
+      gameHistory.unshift({
+        result: resultText,
+        class: resultClass,
+        time: new Date().toLocaleTimeString()
+      });
+      if (gameHistory.length > 20) gameHistory.pop();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (gameHistory.length === 0) {
+        historyList.innerHTML = '<p class="empty-history">No games played yet</p>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < gameHistory.length; i++) {
+        var item = gameHistory[i];
+        html += '<div class="history-item ' + item.class + '">';
+        html += '<span class="history-moves">Tic-Tac-Toe</span>';
+        html += '<span class="history-result">' + item.result + '</span>';
+        html += '<span class="history-time">' + item.time + '</span>';
+        html += '</div>';
+      }
+      historyList.innerHTML = html;
+    }
+
+    function updateConnectionStatus(text, status) {
+      var dot = connectionStatus.querySelector('.status-dot');
+      var textEl = connectionStatus.querySelector('.status-text');
+      if (dot) {
+        dot.className = 'status-dot ' + status;
+      }
+      if (textEl) {
+        textEl.textContent = text;
+      }
+    }
+
+    function selectMode(mode) {
+      gameMode = mode;
+      modeSelection.style.display = 'none';
+      if (mode === 'single') {
+        gameArea.style.display = 'grid';
+        multiplayerControls.style.display = 'none';
+        p2Label.textContent = 'Computer (O)';
+        p1Label.textContent = 'You (X)';
+        p1Move.textContent = '❌';
+        p2Move.textContent = '⭕';
+        mySymbol = 'X';
+        opponentSymbol = 'O';
+        isPlayerTurn = true;
+        resetBoardUI();
+        enableCells(true);
+        setGameStatus('Make your move!', 'waiting');
+        updateConnectionStatus('Singleplayer Mode', 'connected');
+      } else {
+        gameArea.style.display = 'none';
+        multiplayerControls.style.display = 'block';
+        p2Label.textContent = 'Opponent';
+        p1Move.textContent = '❌';
+        p2Move.textContent = '⭕';
+        enableCells(false);
+        setGameStatus('Connect to start playing', 'waiting');
+        updateConnectionStatus('Not connected', 'disconnected');
+        initMultiplayer();
+      }
+    }
+
+    cells.forEach(function(cell) {
+      cell.addEventListener('click', function() {
+        var index = parseInt(this.dataset.index);
+        makeMove(index);
+      });
+    });
+
+    resetBtn.addEventListener('click', function() {
+      if (gameMode === 'single') {
+        resetBoardUI();
+        isPlayerTurn = true;
+        enableCells(true);
+        setGameStatus('Make your move!', 'waiting');
+      } else if (gameMode === 'multi' && isConnected) {
+        resetBoardUI();
+        isPlayerTurn = (mySymbol === 'X');
+        enableCells(isPlayerTurn);
+        if (isPlayerTurn) {
+          setGameStatus('Make your move!', 'waiting');
+        } else {
+          setGameStatus('Waiting for opponent...', 'waiting');
+        }
+        multiplayer.send({ type: 'reset' });
+      }
+    });
+  </script>
+</body>
+</html>

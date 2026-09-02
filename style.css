@@ -1325,3 +1325,173 @@ a {
     padding: 10px;
   }
 }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-width: 360px;
+  margin: 20px auto;
+}
+
+.cell {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  font-size: 56px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.3s;
+  color: #ffffff;
+}
+
+.cell:hover:not(.taken) {
+  background: rgba(255, 45, 117, 0.08);
+  border-color: var(--neon-pink);
+  transform: scale(1.02);
+}
+
+.cell.taken {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.cell.x {
+  color: var(--neon-blue);
+}
+
+.cell.o {
+  color: var(--neon-pink);
+}
+
+.cell.win {
+  background: rgba(57, 255, 20, 0.15);
+  border-color: #39ff14;
+  animation: pulse-win 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-win {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+.turn-indicator {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-gray);
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+}
+
+.turn-indicator span {
+  color: #ffffff;
+}
+
+.game-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 360px;
+  margin: 0 auto 16px;
+  padding: 0 4px;
+}
+
+.game-info .score {
+  font-size: 14px;
+  color: var(--text-gray);
+}
+
+.game-info .score span {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.game-info .score.x-score span {
+  color: var(--neon-blue);
+}
+
+.game-info .score.o-score span {
+  color: var(--neon-pink);
+}
+
+.game-info .score.draw-score span {
+  color: #ffd700;
+}
+
+.game-status {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 12px;
+  max-width: 360px;
+  margin: 0 auto 16px;
+}
+
+.game-status.win {
+  color: #39ff14;
+  background: rgba(57, 255, 20, 0.08);
+}
+
+.game-status.lose {
+  color: #ff2d75;
+  background: rgba(255, 45, 117, 0.08);
+}
+
+.game-status.draw {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.game-status.waiting {
+  color: var(--text-gray);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.reset-btn-ttt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 60px;
+  padding: 10px 24px;
+  color: var(--text-gray);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-top: 8px;
+}
+
+.reset-btn-ttt:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.turn-indicator .player-turn {
+  color: var(--neon-blue);
+}
+
+.turn-indicator .opponent-turn {
+  color: var(--neon-pink);
+}
+
+@media (max-width: 480px) {
+  .cell {
+    font-size: 40px;
+    border-radius: 12px;
+  }
+  .board {
+    max-width: 280px;
+    gap: 6px;
+  }
+}
