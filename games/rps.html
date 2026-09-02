@@ -489,7 +489,6 @@
 
       oppChoice = choice;
       hasOpponentChosen = true;
-      p2Move.textContent = getIcon(choice);
 
       if (hasIChosen) {
         calculateRound();
@@ -506,6 +505,9 @@
       }
 
       console.log('[CALC] Calculating...', myChoice, 'vs', oppChoice);
+
+      p1Move.textContent = getIcon(myChoice);
+      p2Move.textContent = getIcon(oppChoice);
 
       var result = calculateResult(myChoice, oppChoice);
 
@@ -526,10 +528,10 @@
       oppChoice = null;
       hasIChosen = false;
       hasOpponentChosen = false;
-      p1Move.textContent = '❓';
-      p2Move.textContent = '❓';
 
       setTimeout(function() {
+        p1Move.textContent = '❓';
+        p2Move.textContent = '❓';
         enableChoices(true);
         resultMsg.textContent = 'Pick your move!';
       }, 1000);
