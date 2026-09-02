@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeonPoi · Rock Paper Scissors</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <div class="nav-brand">
+        <i class="fas fa-gamepad"></i>
+        <span>NeonPoi <span style="color: #ff2d75;">Arcade</span></span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="#" class="active">Games</a></li>
+      </ul>
+      <button class="nav-toggle" id="navToggle">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+  </nav>
+
+  <section class="game-page">
+    <div class="container">
+      <div class="game-header">
+        <a href="../index.html" class="back-link">
+          <i class="fas fa-arrow-left"></i> Back to Home
+        </a>
+        <h1 class="game-title">✊ Rock Paper Scissors</h1>
+        <p class="game-subtitle">Choose your move and beat the computer</p>
+      </div>
+
+      <div class="game-container">
+        <div class="game-area">
+          <div class="players">
+            <div class="player">
+              <span class="player-label">You</span>
+              <div class="player-move" id="playerMove">❓</div>
+              <span class="player-score" id="playerScore">0</span>
+            </div>
+            <div class="vs">VS</div>
+            <div class="player">
+              <span class="player-label">Computer</span>
+              <div class="player-move" id="computerMove">❓</div>
+              <span class="player-score" id="computerScore">0</span>
+            </div>
+          </div>
+
+          <div class="result" id="resultMessage">Choose your move to start</div>
+
+          <div class="choices">
+            <button class="choice-btn" data-move="rock">
+              <span class="choice-icon">✊</span>
+              <span class="choice-label">Rock</span>
+            </button>
+            <button class="choice-btn" data-move="paper">
+              <span class="choice-icon">✋</span>
+              <span class="choice-label">Paper</span>
+            </button>
+            <button class="choice-btn" data-move="scissors">
+              <span class="choice-icon">✌️</span>
+              <span class="choice-label">Scissors</span>
+            </button>
+          </div>
+
+          <button class="reset-btn" id="resetBtn">
+            <i class="fas fa-undo"></i> Reset Score
+          </button>
+        </div>
+
+        <div class="history-section">
+          <h3>📜 History</h3>
+          <div class="history-list" id="historyList">
+            <p class="empty-history">No games played yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <i class="fas fa-gamepad"></i>
+          <span>NeonPoi Arcade</span>
+          <p>Built by Wimbi Yoas Hizkia</p>
+        </div>
+        <div class="footer-social">
+          <a href="https://github.com/neonpoi" target="_blank"><i class="fab fa-github"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-discord"></i></a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 NeonPoi &middot; Wimbi Yoas Hizkia</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+  <script src="../js/rps.js"></script>
+</body>
+</html>

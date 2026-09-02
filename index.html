@@ -17,6 +17,7 @@
       </div>
       <ul class="nav-links">
         <li><a href="#" class="active">Home</a></li>
+        <li><a href="#">Games</a></li>
       </ul>
       <button class="nav-toggle" id="navToggle">
         <i class="fas fa-bars"></i>
@@ -45,8 +46,8 @@
         </div>
         <div class="hero-stats">
           <div class="stat">
-            <span class="stat-number">0</span>
-            <span class="stat-label">Games</span>
+            <span class="stat-number">1</span>
+            <span class="stat-label">Game</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat">
@@ -68,19 +69,28 @@
     <div class="container">
       <div class="section-header">
         <h2 class="section-title">Games</h2>
-        <p class="section-desc">More games coming soon</p>
+        <p class="section-desc">Choose your game and start playing instantly</p>
       </div>
 
-      <div class="coming-soon-wrapper">
-        <div class="coming-soon-box">
-          <i class="fas fa-gamepad"></i>
-          <h3>Coming Soon</h3>
-          <p>New games are being prepared. Stay tuned!</p>
+      <div class="games-grid">
+        <div class="game-card" onclick="location.href='games/rps.html'">
+          <div class="game-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+            ✊
+          </div>
+          <h3 class="game-name">Rock Paper Scissors</h3>
+          <p class="game-desc">Classic game. Choose your move!</p>
+          <div class="game-tags">
+            <span class="tag">Strategy</span>
+            <span class="tag">Fun</span>
+          </div>
+          <a href="games/rps.html" class="game-link">
+            Play Now <i class="fas fa-arrow-right"></i>
+          </a>
         </div>
       </div>
     </div>
   </section>
-  
+
   <footer class="footer">
     <div class="container">
       <div class="footer-content">
