@@ -291,7 +291,6 @@
       } else if (gameMode === 'multi' && isConnected) {
         enableChoices(true);
         resultMsg.textContent = 'Pick your move!';
-        multiplayer.send({ type: 'reset' });
       }
     }
 
