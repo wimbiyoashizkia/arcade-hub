@@ -54,6 +54,64 @@
         </div>
       </div>
 
+      <!-- Multiplayer Controls (Host/Join) -->
+      <div id="multiplayerControls" style="display:none;">
+        <hr style="border-color:rgba(255,255,255,0.06);margin:24px 0;" />
+
+        <div class="multiplayer-header">
+          <i class="fas fa-wifi"></i>
+          <span>Multiplayer Connection</span>
+        </div>
+
+        <div class="multiplayer-grid">
+          <div class="multiplayer-card">
+            <div class="multiplayer-card-header">
+              <i class="fas fa-plus-circle" style="color:var(--neon-blue);"></i>
+              <h4>Create Room</h4>
+            </div>
+            <p class="multiplayer-desc">Host a game and invite a friend</p>
+            <div class="multiplayer-input-group">
+              <input type="text" id="playerName" placeholder="Your name" value="Player" />
+            </div>
+            <button id="createBtn" class="btn btn-primary btn-block">
+              <i class="fas fa-rocket"></i> Create Room
+            </button>
+            <div id="roomIdDisplay" class="room-id-display">
+              <span class="room-id-label">Room ID</span>
+              <span class="room-id-value">-</span>
+              <button class="btn-copy" id="copyRoomIdBtn" style="display:none;">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="multiplayer-divider">
+            <span>OR</span>
+          </div>
+
+          <div class="multiplayer-card">
+            <div class="multiplayer-card-header">
+              <i class="fas fa-sign-in-alt" style="color:var(--neon-pink);"></i>
+              <h4>Join Room</h4>
+            </div>
+            <p class="multiplayer-desc">Enter a room ID to join a friend</p>
+            <div class="multiplayer-input-group">
+              <input type="text" id="playerNameJoin" placeholder="Your name" value="Player" />
+              <input type="text" id="roomIdInput" placeholder="Enter Room ID" />
+            </div>
+            <button id="joinBtn" class="btn btn-secondary btn-block">
+              <i class="fas fa-door-open"></i> Join Room
+            </button>
+          </div>
+        </div>
+
+        <div id="connectionStatus" class="connection-status-modern">
+          <div class="status-dot disconnected"></div>
+          <span class="status-text">Not connected</span>
+        </div>
+      </div>
+
+      <!-- Game Area (RPS) -->
       <div id="gameArea" class="game-container" style="display:none;">
         <div class="game-area">
           <div class="players">
@@ -85,62 +143,6 @@
               <span class="choice-icon">✌️</span>
               <span class="choice-label">Scissors</span>
             </button>
-          </div>
-
-          <div id="multiplayerControls" style="display:none;">
-            <hr style="border-color:rgba(255,255,255,0.06);margin:24px 0;" />
-
-            <div class="multiplayer-header">
-              <i class="fas fa-wifi"></i>
-              <span>Multiplayer Connection</span>
-            </div>
-
-            <div class="multiplayer-grid">
-              <div class="multiplayer-card">
-                <div class="multiplayer-card-header">
-                  <i class="fas fa-plus-circle" style="color:var(--neon-blue);"></i>
-                  <h4>Create Room</h4>
-                </div>
-                <p class="multiplayer-desc">Host a game and invite a friend</p>
-                <div class="multiplayer-input-group">
-                  <input type="text" id="playerName" placeholder="Your name" value="Player" />
-                </div>
-                <button id="createBtn" class="btn btn-primary btn-block">
-                  <i class="fas fa-rocket"></i> Create Room
-                </button>
-                <div id="roomIdDisplay" class="room-id-display">
-                  <span class="room-id-label">Room ID</span>
-                  <span class="room-id-value">-</span>
-                  <button class="btn-copy" id="copyRoomIdBtn" style="display:none;">
-                    <i class="fas fa-copy"></i>
-                  </button>
-                </div>
-              </div>
-
-              <div class="multiplayer-divider">
-                <span>OR</span>
-              </div>
-
-              <div class="multiplayer-card">
-                <div class="multiplayer-card-header">
-                  <i class="fas fa-sign-in-alt" style="color:var(--neon-pink);"></i>
-                  <h4>Join Room</h4>
-                </div>
-                <p class="multiplayer-desc">Enter a room ID to join a friend</p>
-                <div class="multiplayer-input-group">
-                  <input type="text" id="playerNameJoin" placeholder="Your name" value="Player" />
-                  <input type="text" id="roomIdInput" placeholder="Enter Room ID" />
-                </div>
-                <button id="joinBtn" class="btn btn-secondary btn-block">
-                  <i class="fas fa-door-open"></i> Join Room
-                </button>
-              </div>
-            </div>
-
-            <div id="connectionStatus" class="connection-status-modern">
-              <div class="status-dot disconnected"></div>
-              <span class="status-text">Not connected</span>
-            </div>
           </div>
 
           <button class="reset-btn" id="resetBtn" style="margin-top:16px;">
@@ -199,6 +201,7 @@
 
     var modeSelection = document.getElementById('modeSelection');
     var gameArea = document.getElementById('gameArea');
+    var multiplayerControls = document.getElementById('multiplayerControls');
     var p1Label = document.getElementById('p1Label');
     var p2Label = document.getElementById('p2Label');
     var p1Move = document.getElementById('p1Move');
@@ -206,7 +209,6 @@
     var p1Score = document.getElementById('p1Score');
     var p2Score = document.getElementById('p2Score');
     var resultMsg = document.getElementById('resultMessage');
-    var multiplayerControls = document.getElementById('multiplayerControls');
     var historyList = document.getElementById('historyList');
     var resetBtn = document.getElementById('resetBtn');
     var connectionStatus = document.getElementById('connectionStatus');
@@ -297,16 +299,18 @@
     function selectMode(mode) {
       gameMode = mode;
       modeSelection.style.display = 'none';
-      gameArea.style.display = 'grid';
+      
       if (mode === 'single') {
-        p2Label.textContent = 'Computer';
+        gameArea.style.display = 'grid';
         multiplayerControls.style.display = 'none';
+        p2Label.textContent = 'Computer';
         enableChoices(true);
         resultMsg.textContent = 'Choose your move!';
         updateConnectionStatus('Singleplayer Mode', 'connected');
       } else {
-        p2Label.textContent = 'Waiting...';
+        gameArea.style.display = 'none';
         multiplayerControls.style.display = 'block';
+        p2Label.textContent = 'Waiting...';
         enableChoices(false);
         resultMsg.textContent = 'Connect to start playing';
         updateConnectionStatus('Not connected', 'disconnected');
@@ -375,6 +379,9 @@
         isConnected = true;
         console.log('[PEER] Connected to opponent');
         
+        multiplayerControls.style.display = 'none';
+        gameArea.style.display = 'grid';
+        
         if (!amIHost) {
           setTimeout(function() {
             multiplayer.send({ type: 'name', name: playerName });
@@ -389,6 +396,10 @@
       multiplayer.onPeerDisconnected = function() {
         isConnected = false;
         console.log('[PEER] Disconnected');
+        
+        gameArea.style.display = 'none';
+        multiplayerControls.style.display = 'block';
+        
         enableChoices(false);
         resultMsg.textContent = 'Opponent disconnected';
         updateConnectionStatus('Disconnected', 'disconnected');
