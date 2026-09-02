@@ -371,7 +371,9 @@
       multiplayer.onPeerConnected = function() {
         isConnected = true;
         console.log('[PEER] Connected to opponent');
-        multiplayer.send({ type: 'name', name: playerName });
+        setTimeout(function() {
+          multiplayer.send({ type: 'name', name: playerName });
+        }, 500);
         enableChoices(true);
         resultMsg.textContent = 'Pick your move!';
         updateConnectionStatus('Connected to ' + (opponentName || 'opponent'), 'connected');
