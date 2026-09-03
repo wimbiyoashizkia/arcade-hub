@@ -148,19 +148,32 @@ class Multiplayer {
         }
       });
 
+      let connectionAttempted = false;
+      let timeoutId = null;
+
       this.peer.on('open', () => {
         console.log('[PEER] Peer opened, joining room:', roomId);
         this.roomId = roomId;
         this.peerId = this.peer.id;
         this.isHost = false;
 
+        if (connectionAttempted) return;
+        connectionAttempted = true;
+
         const conn = this.peer.connect(roomId, {
           reliable: true
         });
         console.log('[PEER] Attempting to connect to:', roomId);
 
+        timeoutId = setTimeout(() => {
+          console.error('[PEER] Connection timeout after 10 seconds');
+          if (this.onJoinError) this.onJoinError('Connection timeout - Host may be offline');
+          reject(new Error('Connection timeout'));
+        }, 10000);
+
         conn.on('open', () => {
           console.log('[PEER] Connection opened to:', roomId);
+          clearTimeout(timeoutId);
           this.connections = [conn];
           this.isConnected = true;
           resolve();
@@ -181,6 +194,7 @@ class Multiplayer {
 
         conn.on('error', (err) => {
           console.error('[PEER] Connection error:', err);
+          clearTimeout(timeoutId);
           if (this.onJoinError) this.onJoinError(err.message);
           reject(err);
         });
@@ -188,6 +202,8 @@ class Multiplayer {
 
       this.peer.on('error', (err) => {
         console.error('[PEER] Peer error:', err);
+        clearTimeout(timeoutId);
+        
         if (err.type === 'unavailable-id') {
           this.retryCount++;
           if (this.retryCount < this.maxRetries) {
@@ -195,8 +211,12 @@ class Multiplayer {
             this.peer.destroy();
             this.joinRoom(roomId, playerName).then(resolve).catch(reject);
           } else {
+            if (this.onJoinError) this.onJoinError('Failed to join after ' + this.maxRetries + ' attempts');
             reject(new Error('Failed to join room after ' + this.maxRetries + ' attempts'));
           }
+        } else if (err.message && err.message.includes('Could not connect to peer')) {
+          if (this.onJoinError) this.onJoinError('Host not found - Please check Room ID and try again');
+          reject(new Error('Host not found'));
         } else {
           if (this.onJoinError) this.onJoinError(err.message);
           reject(err);
@@ -205,6 +225,7 @@ class Multiplayer {
 
       this.peer.on('disconnected', () => {
         console.log('[PEER] Disconnected from PeerJS server');
+        clearTimeout(timeoutId);
       });
     });
   }
