@@ -1,7 +1,7 @@
 class Multiplayer {
   constructor() {
     this.peer = null;
-    this.connection = null;
+    this.connections = [];
     this.roomId = null;
     this.isHost = false;
     this.isConnected = false;
@@ -11,12 +11,35 @@ class Multiplayer {
     this.onPeerDisconnected = null;
     this.onRoomCreated = null;
     this.onJoinError = null;
+    this.peerId = null;
+    this.retryCount = 0;
+    this.maxRetries = 3;
+  }
+
+  generatePeerId() {
+    // Generate unique ID with timestamp and random string
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    const name = this.playerName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `${name}-${timestamp}-${random}`;
   }
 
   createRoom(playerName) {
     return new Promise((resolve, reject) => {
       this.playerName = playerName;
-      this.peer = new Peer(undefined, {
+      this.retryCount = 0;
+      
+      // Generate unique ID
+      const uniqueId = this.generatePeerId();
+      console.log('[PEER] Creating room with ID:', uniqueId);
+      
+      // First destroy any existing peer
+      if (this.peer) {
+        this.peer.destroy();
+        this.peer = null;
+      }
+
+      this.peer = new Peer(uniqueId, {
         host: '0.peerjs.com',
         port: 443,
         secure: true,
@@ -39,30 +62,53 @@ class Multiplayer {
       });
 
       this.peer.on('open', (id) => {
+        console.log('[PEER] Room created with ID:', id);
         this.roomId = id;
+        this.peerId = id;
         this.isHost = true;
         if (this.onRoomCreated) this.onRoomCreated(id);
         resolve(id);
       });
 
       this.peer.on('connection', (conn) => {
-        this.connection = conn;
+        console.log('[PEER] Incoming connection from:', conn.peer);
+        this.connections.push(conn);
         this.isConnected = true;
 
         conn.on('data', (data) => {
-          if (this.onDataReceived) this.onDataReceived(data);
+          console.log('[PEER] Data received from', conn.peer, data);
+          if (this.onDataReceived) {
+            this.onDataReceived(data, conn);
+          }
         });
 
         conn.on('close', () => {
-          this.isConnected = false;
-          if (this.onPeerDisconnected) this.onPeerDisconnected();
+          console.log('[PEER] Connection closed by', conn.peer);
+          this.connections = this.connections.filter(c => c.peer !== conn.peer);
+          if (this.connections.length === 0) {
+            this.isConnected = false;
+          }
+          if (this.onPeerDisconnected) this.onPeerDisconnected(conn);
         });
 
-        if (this.onPeerConnected) this.onPeerConnected();
+        if (this.onPeerConnected) this.onPeerConnected(conn);
       });
 
       this.peer.on('error', (err) => {
-        reject(err);
+        console.error('[PEER] Error:', err);
+        if (err.type === 'unavailable-id') {
+          // ID already taken, try again with new ID
+          this.retryCount++;
+          if (this.retryCount < this.maxRetries) {
+            console.log('[PEER] ID taken, retrying...', this.retryCount);
+            this.peer.destroy();
+            this.createRoom(playerName).then(resolve).catch(reject);
+          } else {
+            reject(new Error('Failed to create room after ' + this.maxRetries + ' attempts'));
+          }
+        } else {
+          reject(err);
+        }
       });
     });
   }
@@ -70,7 +116,19 @@ class Multiplayer {
   joinRoom(roomId, playerName) {
     return new Promise((resolve, reject) => {
       this.playerName = playerName;
-      this.peer = new Peer(undefined, {
+      this.retryCount = 0;
+      
+      // Generate unique ID for client
+      const uniqueId = this.generatePeerId();
+      console.log('[PEER] Joining room with client ID:', uniqueId);
+      
+      // First destroy any existing peer
+      if (this.peer) {
+        this.peer.destroy();
+        this.peer = null;
+      }
+
+      this.peer = new Peer(uniqueId, {
         host: '0.peerjs.com',
         port: 443,
         secure: true,
@@ -93,54 +151,95 @@ class Multiplayer {
       });
 
       this.peer.on('open', () => {
+        console.log('[PEER] Peer opened, joining room:', roomId);
         this.roomId = roomId;
+        this.peerId = this.peer.id;
         this.isHost = false;
 
         const conn = this.peer.connect(roomId);
+        console.log('[PEER] Attempting to connect to:', roomId);
 
         conn.on('open', () => {
-          this.connection = conn;
+          console.log('[PEER] Connection opened to:', roomId);
+          this.connections = [conn];
           this.isConnected = true;
           resolve();
 
           conn.on('data', (data) => {
-            if (this.onDataReceived) this.onDataReceived(data);
+            console.log('[PEER] Data received from host:', data);
+            if (this.onDataReceived) this.onDataReceived(data, conn);
           });
 
           conn.on('close', () => {
+            console.log('[PEER] Connection closed by host');
             this.isConnected = false;
-            if (this.onPeerDisconnected) this.onPeerDisconnected();
+            if (this.onPeerDisconnected) this.onPeerDisconnected(conn);
           });
 
-          if (this.onPeerConnected) this.onPeerConnected();
+          if (this.onPeerConnected) this.onPeerConnected(conn);
         });
 
         conn.on('error', (err) => {
+          console.error('[PEER] Connection error:', err);
           if (this.onJoinError) this.onJoinError(err.message);
           reject(err);
         });
       });
 
       this.peer.on('error', (err) => {
-        if (this.onJoinError) this.onJoinError(err.message);
-        reject(err);
+        console.error('[PEER] Peer error:', err);
+        if (err.type === 'unavailable-id') {
+          // ID already taken, try again with new ID
+          this.retryCount++;
+          if (this.retryCount < this.maxRetries) {
+            console.log('[PEER] ID taken, retrying...', this.retryCount);
+            this.peer.destroy();
+            this.joinRoom(roomId, playerName).then(resolve).catch(reject);
+          } else {
+            reject(new Error('Failed to join room after ' + this.maxRetries + ' attempts'));
+          }
+        } else {
+          if (this.onJoinError) this.onJoinError(err.message);
+          reject(err);
+        }
       });
     });
   }
 
-  send(data) {
-    if (this.connection && this.isConnected) {
-      this.connection.send(data);
-      return true;
+  send(data, targetConn = null) {
+    if (targetConn) {
+      if (targetConn && targetConn.open) {
+        console.log('[PEER] Sending data to specific peer:', targetConn.peer, data);
+        targetConn.send(data);
+        return true;
+      }
+      return false;
     }
+
+    if (this.connections.length > 0) {
+      console.log('[PEER] Broadcasting data to all connections:', data);
+      let sent = false;
+      for (const conn of this.connections) {
+        if (conn.open) {
+          conn.send(data);
+          sent = true;
+        }
+      }
+      return sent;
+    }
+    console.warn('[PEER] Cannot send data - no connections');
     return false;
   }
 
+  broadcast(data) {
+    return this.send(data);
+  }
+
   disconnect() {
-    if (this.connection) {
-      this.connection.close();
-      this.connection = null;
+    for (const conn of this.connections) {
+      if (conn.open) conn.close();
     }
+    this.connections = [];
     if (this.peer) {
       this.peer.destroy();
       this.peer = null;
@@ -148,6 +247,8 @@ class Multiplayer {
     this.isConnected = false;
     this.isHost = false;
     this.roomId = null;
+    this.peerId = null;
+    this.retryCount = 0;
   }
 
   getStatus() {
@@ -155,8 +256,9 @@ class Multiplayer {
       isHost: this.isHost,
       isConnected: this.isConnected,
       roomId: this.roomId,
-      peerId: this.peer ? this.peer.id : null,
-      playerName: this.playerName
+      peerId: this.peerId,
+      playerName: this.playerName,
+      connectionCount: this.connections.length
     };
   }
 }
