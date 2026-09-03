@@ -356,6 +356,22 @@
 
       var placedMark = currentPlayer;
 
+      board[index] = placedMark;
+      updateBoard();
+
+      var result = checkWinner();
+      if (result) {
+        handleGameEnd(result);
+        if (gameMode === 'multi' && isConnected) {
+          multiplayer.send({ 
+            type: 'gameEnd', 
+            result: result,
+            board: board.slice()
+          });
+        }
+        return true;
+      }
+
       if (currentPlayer === mySymbol) {
         if (playerMoves.length >= 3) {
           var oldIndex = playerMoves.shift();
@@ -370,19 +386,8 @@
         opponentMoves.push(index);
       }
 
-      board[index] = placedMark;
-      updateBoard();
-
-      var result = checkWinner();
-      if (result) {
-        handleGameEnd(result);
-        if (gameMode === 'multi' && isConnected) {
-          multiplayer.send({ type: 'gameEnd', result: result });
-        }
-        return true;
-      }
-
       currentPlayer = (currentPlayer === 'X') ? 'O' : 'X';
+      updateBoard();
       updateTurnIndicator();
 
       if (gameMode === 'single') {
@@ -515,7 +520,7 @@
             }, 300);
           }
         } else if (data.type === 'gameEnd') {
-          handleOpponentGameEnd(data.result);
+          handleOpponentGameEnd(data);
         } else if (data.type === 'reset') {
           resetBoardUI();
         }
@@ -642,12 +647,6 @@
 
       if (board[index]) return;
 
-      if (opponentMoves.length >= 3) {
-        var oldIndex = opponentMoves.shift();
-        board[oldIndex] = null;
-      }
-      opponentMoves.push(index);
-
       board[index] = player;
       currentPlayer = player;
       updateBoard();
@@ -658,14 +657,29 @@
         return;
       }
 
+      if (opponentMoves.length >= 3) {
+        var oldIndex = opponentMoves.shift();
+        board[oldIndex] = null;
+      }
+      opponentMoves.push(index);
+
       currentPlayer = (currentPlayer === 'X') ? 'O' : 'X';
+      updateBoard();
       isPlayerTurn = true;
       enableCells(true);
       updateTurnIndicator();
       setGameStatus('Make your move!', 'waiting');
     }
 
-    function handleOpponentGameEnd(result) {
+    function handleOpponentGameEnd(data) {
+      var result = data.result;
+      var boardState = data.board;
+      
+      if (boardState) {
+        board = boardState.slice();
+        updateBoard();
+      }
+      
       if (result.winner === 'draw') {
         drawScore++;
         setGameStatus("It's a draw! 🤝", 'draw');
