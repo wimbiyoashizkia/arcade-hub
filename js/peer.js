@@ -17,7 +17,6 @@ class Multiplayer {
   }
 
   generatePeerId() {
-    // Generate unique ID with timestamp and random string
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substring(2, 8);
     const name = this.playerName.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -29,11 +28,9 @@ class Multiplayer {
       this.playerName = playerName;
       this.retryCount = 0;
       
-      // Generate unique ID
       const uniqueId = this.generatePeerId();
       console.log('[PEER] Creating room with ID:', uniqueId);
       
-      // First destroy any existing peer
       if (this.peer) {
         this.peer.destroy();
         this.peer = null;
@@ -97,7 +94,6 @@ class Multiplayer {
       this.peer.on('error', (err) => {
         console.error('[PEER] Error:', err);
         if (err.type === 'unavailable-id') {
-          // ID already taken, try again with new ID
           this.retryCount++;
           if (this.retryCount < this.maxRetries) {
             console.log('[PEER] ID taken, retrying...', this.retryCount);
@@ -110,6 +106,10 @@ class Multiplayer {
           reject(err);
         }
       });
+
+      this.peer.on('disconnected', () => {
+        console.log('[PEER] Disconnected from PeerJS server');
+      });
     });
   }
 
@@ -118,11 +118,9 @@ class Multiplayer {
       this.playerName = playerName;
       this.retryCount = 0;
       
-      // Generate unique ID for client
       const uniqueId = this.generatePeerId();
       console.log('[PEER] Joining room with client ID:', uniqueId);
       
-      // First destroy any existing peer
       if (this.peer) {
         this.peer.destroy();
         this.peer = null;
@@ -156,7 +154,9 @@ class Multiplayer {
         this.peerId = this.peer.id;
         this.isHost = false;
 
-        const conn = this.peer.connect(roomId);
+        const conn = this.peer.connect(roomId, {
+          reliable: true
+        });
         console.log('[PEER] Attempting to connect to:', roomId);
 
         conn.on('open', () => {
@@ -189,7 +189,6 @@ class Multiplayer {
       this.peer.on('error', (err) => {
         console.error('[PEER] Peer error:', err);
         if (err.type === 'unavailable-id') {
-          // ID already taken, try again with new ID
           this.retryCount++;
           if (this.retryCount < this.maxRetries) {
             console.log('[PEER] ID taken, retrying...', this.retryCount);
@@ -202,6 +201,10 @@ class Multiplayer {
           if (this.onJoinError) this.onJoinError(err.message);
           reject(err);
         }
+      });
+
+      this.peer.on('disconnected', () => {
+        console.log('[PEER] Disconnected from PeerJS server');
       });
     });
   }
