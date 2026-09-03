@@ -112,7 +112,7 @@
 
       <div id="gameArea" class="game-container" style="display:none;">
         <div class="game-area">
-          <div class="players" style="margin-bottom:8px;">
+          <div class="players">
             <div class="player">
               <span class="player-label" id="p1Label">You (X)</span>
               <div class="player-move" id="p1Move" style="font-size:32px;">❌</div>
@@ -126,14 +126,8 @@
             </div>
           </div>
 
-          <div class="game-info">
-            <div class="score" id="scoreLeft">X: <span id="scoreLeftValue">0</span></div>
-            <div class="score draw-score">Draw: <span id="drawScore">0</span></div>
-            <div class="score" id="scoreRight">O: <span id="scoreRightValue">0</span></div>
-          </div>
-
           <div id="turnIndicator" class="turn-indicator">
-            Your turn (<span class="player-turn">X</span>)
+            <span id="turnText">Your turn</span> (<span class="player-turn x-turn" id="turnSymbol">X</span>)
           </div>
 
           <div id="gameStatus" class="game-status waiting">Make your move!</div>
@@ -228,11 +222,6 @@
     var p2Move = document.getElementById('p2Move');
     var p1Score = document.getElementById('p1Score');
     var p2Score = document.getElementById('p2Score');
-    var scoreLeft = document.getElementById('scoreLeft');
-    var scoreRight = document.getElementById('scoreRight');
-    var scoreLeftValue = document.getElementById('scoreLeftValue');
-    var scoreRightValue = document.getElementById('scoreRightValue');
-    var drawScoreEl = document.getElementById('drawScore');
     var historyList = document.getElementById('historyList');
     var resetBtn = document.getElementById('resetBtnTTT');
     var connectionStatus = document.getElementById('connectionStatus');
@@ -250,28 +239,30 @@
     }
 
     function updateScores() {
-      drawScoreEl.textContent = drawScore;
-      
       if (mySymbol === 'X') {
-        scoreLeft.innerHTML = 'X: <span id="scoreLeftValue">' + xScore + '</span>';
-        scoreRight.innerHTML = 'O: <span id="scoreRightValue">' + oScore + '</span>';
         p1Score.textContent = xScore;
         p2Score.textContent = oScore;
       } else {
-        scoreLeft.innerHTML = 'O: <span id="scoreLeftValue">' + oScore + '</span>';
-        scoreRight.innerHTML = 'X: <span id="scoreRightValue">' + xScore + '</span>';
         p1Score.textContent = oScore;
         p2Score.textContent = xScore;
       }
     }
 
     function updateTurnIndicator() {
-      if (!gameActive) return;
+      if (!gameActive) {
+        document.getElementById('turnText').textContent = 'Game Over';
+        return;
+      }
+      
       var symbol = currentPlayer;
       var isMyTurn = (symbol === mySymbol);
       var turnText = isMyTurn ? 'Your turn' : "Opponent's turn";
-      var turnClass = isMyTurn ? 'player-turn' : 'opponent-turn';
-      turnIndicator.innerHTML = turnText + ' (<span class="' + turnClass + '">' + symbol + '</span>)';
+      var turnClass = isMyTurn ? 'x-turn' : 'o-turn';
+      
+      document.getElementById('turnText').textContent = turnText;
+      var symbolEl = document.getElementById('turnSymbol');
+      symbolEl.textContent = symbol;
+      symbolEl.className = 'player-turn ' + turnClass;
     }
 
     function setGameStatus(text, className) {
