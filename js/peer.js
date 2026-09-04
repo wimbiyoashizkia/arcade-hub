@@ -14,6 +14,16 @@ class Multiplayer {
     this.peerId = null;
     this.retryCount = 0;
     this.maxRetries = 3;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectTimer = null;
+    this.isReconnecting = false;
+    this.servers = [
+      { host: '0.peerjs.com', port: 443, secure: true },
+      { host: 'peerjs-server.herokuapp.com', port: 443, secure: true },
+      { host: 'eu0.peerjs.com', port: 443, secure: true }
+    ];
+    this.currentServerIndex = 0;
   }
 
   generatePeerId() {
@@ -23,10 +33,46 @@ class Multiplayer {
     return `${name}-${timestamp}-${random}`;
   }
 
+  getPeerConfig() {
+    const server = this.servers[this.currentServerIndex];
+    return {
+      host: server.host,
+      port: server.port,
+      secure: server.secure,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+          { urls: 'stun:stun.ekiga.net' },
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' },
+          { urls: 'turn:turn.anyfirewall.com:443?transport=udp', username: 'webrtc', credential: 'webrtc' }
+        ]
+      }
+    };
+  }
+
+  tryNextServer() {
+    this.currentServerIndex++;
+    if (this.currentServerIndex >= this.servers.length) {
+      this.currentServerIndex = 0;
+      return false;
+    }
+    console.log('[PEER] Switching to server:', this.servers[this.currentServerIndex].host);
+    return true;
+  }
+
   createRoom(playerName) {
     return new Promise((resolve, reject) => {
       this.playerName = playerName;
       this.retryCount = 0;
+      this.currentServerIndex = 0;
       
       const uniqueId = this.generatePeerId();
       console.log('[PEER] Creating room with ID:', uniqueId);
@@ -36,33 +82,19 @@ class Multiplayer {
         this.peer = null;
       }
 
-      this.peer = new Peer(uniqueId, {
-        host: '0.peerjs.com',
-        port: 443,
-        secure: true,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:stun.ekiga.net' },
-            { urls: 'stun:stun.stunprotocol.org:3478' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' },
-            { urls: 'turn:turn.anyfirewall.com:443?transport=udp', username: 'webrtc', credential: 'webrtc' }
-          ]
-        }
-      });
+      const config = this.getPeerConfig();
+      console.log('[PEER] Using server:', config.host);
+
+      this.peer = new Peer(uniqueId, config);
 
       this.peer.on('open', (id) => {
         console.log('[PEER] Room created with ID:', id);
+        console.log('[PEER] Server used:', config.host);
         this.roomId = id;
         this.peerId = id;
         this.isHost = true;
+        this.reconnectAttempts = 0;
+        this.isReconnecting = false;
         if (this.onRoomCreated) this.onRoomCreated(id);
         resolve(id);
       });
@@ -71,6 +103,7 @@ class Multiplayer {
         console.log('[PEER] Incoming connection from:', conn.peer);
         this.connections.push(conn);
         this.isConnected = true;
+        this.isReconnecting = false;
 
         conn.on('data', (data) => {
           console.log('[PEER] Data received from', conn.peer, data);
@@ -84,6 +117,7 @@ class Multiplayer {
           this.connections = this.connections.filter(c => c.peer !== conn.peer);
           if (this.connections.length === 0) {
             this.isConnected = false;
+            this.handleReconnect();
           }
           if (this.onPeerDisconnected) this.onPeerDisconnected(conn);
         });
@@ -93,6 +127,7 @@ class Multiplayer {
 
       this.peer.on('error', (err) => {
         console.error('[PEER] Error:', err);
+        
         if (err.type === 'unavailable-id') {
           this.retryCount++;
           if (this.retryCount < this.maxRetries) {
@@ -102,6 +137,14 @@ class Multiplayer {
           } else {
             reject(new Error('Failed to create room after ' + this.maxRetries + ' attempts'));
           }
+        } else if (err.type === 'server-error' || err.message.includes('timeout')) {
+          console.log('[PEER] Server error, trying next server...');
+          this.peer.destroy();
+          if (this.tryNextServer()) {
+            this.createRoom(playerName).then(resolve).catch(reject);
+          } else {
+            reject(new Error('All servers failed'));
+          }
         } else {
           reject(err);
         }
@@ -109,6 +152,7 @@ class Multiplayer {
 
       this.peer.on('disconnected', () => {
         console.log('[PEER] Disconnected from PeerJS server');
+        this.handleReconnect();
       });
     });
   }
@@ -117,6 +161,7 @@ class Multiplayer {
     return new Promise((resolve, reject) => {
       this.playerName = playerName;
       this.retryCount = 0;
+      this.currentServerIndex = 0;
       
       const uniqueId = this.generatePeerId();
       console.log('[PEER] Joining room with client ID:', uniqueId);
@@ -126,36 +171,22 @@ class Multiplayer {
         this.peer = null;
       }
 
-      this.peer = new Peer(uniqueId, {
-        host: '0.peerjs.com',
-        port: 443,
-        secure: true,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:stun.ekiga.net' },
-            { urls: 'stun:stun.stunprotocol.org:3478' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' },
-            { urls: 'turn:turn.anyfirewall.com:443?transport=udp', username: 'webrtc', credential: 'webrtc' }
-          ]
-        }
-      });
+      const config = this.getPeerConfig();
+      console.log('[PEER] Using server:', config.host);
+
+      this.peer = new Peer(uniqueId, config);
 
       let connectionAttempted = false;
       let timeoutId = null;
 
       this.peer.on('open', () => {
         console.log('[PEER] Peer opened, joining room:', roomId);
+        console.log('[PEER] Server used:', config.host);
         this.roomId = roomId;
         this.peerId = this.peer.id;
         this.isHost = false;
+        this.reconnectAttempts = 0;
+        this.isReconnecting = false;
 
         if (connectionAttempted) return;
         connectionAttempted = true;
@@ -176,6 +207,7 @@ class Multiplayer {
           clearTimeout(timeoutId);
           this.connections = [conn];
           this.isConnected = true;
+          this.isReconnecting = false;
           resolve();
 
           conn.on('data', (data) => {
@@ -186,6 +218,7 @@ class Multiplayer {
           conn.on('close', () => {
             console.log('[PEER] Connection closed by host');
             this.isConnected = false;
+            this.handleReconnect();
             if (this.onPeerDisconnected) this.onPeerDisconnected(conn);
           });
 
@@ -214,6 +247,14 @@ class Multiplayer {
             if (this.onJoinError) this.onJoinError('Failed to join after ' + this.maxRetries + ' attempts');
             reject(new Error('Failed to join room after ' + this.maxRetries + ' attempts'));
           }
+        } else if (err.type === 'server-error' || err.message.includes('timeout')) {
+          console.log('[PEER] Server error, trying next server...');
+          this.peer.destroy();
+          if (this.tryNextServer()) {
+            this.joinRoom(roomId, playerName).then(resolve).catch(reject);
+          } else {
+            reject(new Error('All servers failed'));
+          }
         } else if (err.message && err.message.includes('Could not connect to peer')) {
           if (this.onJoinError) this.onJoinError('Host not found - Please check Room ID and try again');
           reject(new Error('Host not found'));
@@ -226,8 +267,33 @@ class Multiplayer {
       this.peer.on('disconnected', () => {
         console.log('[PEER] Disconnected from PeerJS server');
         clearTimeout(timeoutId);
+        this.handleReconnect();
       });
     });
+  }
+
+  handleReconnect() {
+    if (this.isReconnecting) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('[PEER] Max reconnect attempts reached');
+      return;
+    }
+
+    this.isReconnecting = true;
+    this.reconnectAttempts++;
+    
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+
+    console.log('[PEER] Attempting to reconnect...', this.reconnectAttempts);
+
+    this.reconnectTimer = setTimeout(() => {
+      if (this.peer) {
+        this.peer.reconnect();
+        this.isReconnecting = false;
+      }
+    }, 3000);
   }
 
   send(data, targetConn = null) {
@@ -260,6 +326,13 @@ class Multiplayer {
   }
 
   disconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.isReconnecting = false;
+    this.reconnectAttempts = 0;
+    
     for (const conn of this.connections) {
       if (conn.open) conn.close();
     }
@@ -273,6 +346,7 @@ class Multiplayer {
     this.roomId = null;
     this.peerId = null;
     this.retryCount = 0;
+    this.currentServerIndex = 0;
   }
 
   getStatus() {
@@ -282,7 +356,10 @@ class Multiplayer {
       roomId: this.roomId,
       peerId: this.peerId,
       playerName: this.playerName,
-      connectionCount: this.connections.length
+      connectionCount: this.connections.length,
+      reconnectAttempts: this.reconnectAttempts,
+      isReconnecting: this.isReconnecting,
+      currentServer: this.servers[this.currentServerIndex]
     };
   }
 }
