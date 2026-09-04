@@ -178,6 +178,7 @@ class Multiplayer {
 
       let connectionAttempted = false;
       let timeoutId = null;
+      let conn = null;
 
       this.peer.on('open', () => {
         console.log('[PEER] Peer opened, joining room:', roomId);
@@ -191,16 +192,20 @@ class Multiplayer {
         if (connectionAttempted) return;
         connectionAttempted = true;
 
-        const conn = this.peer.connect(roomId, {
+        conn = this.peer.connect(roomId, {
           reliable: true
         });
         console.log('[PEER] Attempting to connect to:', roomId);
 
         timeoutId = setTimeout(() => {
-          console.error('[PEER] Connection timeout after 10 seconds');
-          if (this.onJoinError) this.onJoinError('Connection timeout - Host may be offline');
-          reject(new Error('Connection timeout'));
-        }, 10000);
+          console.error('[PEER] Connection timeout after 30 seconds');
+          if (conn && conn.open) {
+            console.log('[PEER] Connection is actually open, ignoring timeout');
+            return;
+          }
+          if (this.onJoinError) this.onJoinError('Connection timeout - Host may be offline. Please try again.');
+          reject(new Error('Connection timeout - Host may be offline'));
+        }, 30000);
 
         conn.on('open', () => {
           console.log('[PEER] Connection opened to:', roomId);
