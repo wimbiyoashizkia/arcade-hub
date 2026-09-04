@@ -1,3 +1,13 @@
+(function() {
+  var version = '2.0';
+  var scripts = document.querySelectorAll('script[src*="main.js"], script[src*="peer.js"]');
+  scripts.forEach(function(script) {
+    if (script.src && !script.src.includes('?v=')) {
+      script.src = script.src + '?v=' + version;
+    }
+  });
+})();
+
 console.log('NeonPoi Arcade loaded.');
 
 var toggle = document.getElementById('navToggle');
