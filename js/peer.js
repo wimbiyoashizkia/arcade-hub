@@ -34,6 +34,34 @@ class Multiplayer {
     return name + '-' + timestamp + '-' + random;
   }
 
+  checkServerStatus() {
+    var self = this;
+    return new Promise(function(resolve) {
+      var testPeer = new Peer({
+        host: self.servers[self.currentServerIndex].host,
+        port: self.servers[self.currentServerIndex].port,
+        secure: self.servers[self.currentServerIndex].secure
+      });
+      
+      var timeout = setTimeout(function() {
+        testPeer.destroy();
+        resolve(false);
+      }, 5000);
+      
+      testPeer.on('open', function() {
+        clearTimeout(timeout);
+        testPeer.destroy();
+        resolve(true);
+      });
+      
+      testPeer.on('error', function() {
+        clearTimeout(timeout);
+        testPeer.destroy();
+        resolve(false);
+      });
+    });
+  }
+
   getPeerConfig() {
     var server = this.servers[this.currentServerIndex];
     var isSafari = this.browserInfo && this.browserInfo.isSafari;
@@ -82,6 +110,9 @@ class Multiplayer {
       return false;
     }
     console.log('[PEER] Switching to server:', this.servers[this.currentServerIndex].host);
+    if (this.onJoinError) {
+      this.onJoinError('Switching to backup server...');
+    }
     return true;
   }
 
@@ -165,6 +196,7 @@ class Multiplayer {
             if (self.tryNextServer()) {
               self.createRoom(playerName).then(resolve).catch(reject);
             } else {
+              if (self.onJoinError) self.onJoinError('All PeerJS servers are currently unavailable. Please wait and try again.');
               reject(new Error('All servers failed'));
             }
           } else {
@@ -308,6 +340,7 @@ class Multiplayer {
               if (self.tryNextServer()) {
                 setTimeout(attemptJoin, 1000);
               } else {
+                if (self.onJoinError) self.onJoinError('All PeerJS servers are currently unavailable. Please wait and try again.');
                 reject(new Error('All servers failed'));
               }
             } else if (err.message && err.message.includes('Could not connect to peer')) {
