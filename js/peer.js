@@ -55,7 +55,8 @@ class Multiplayer {
           { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
           { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
           { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' },
-          { urls: 'turn:turn.anyfirewall.com:443?transport=udp', username: 'webrtc', credential: 'webrtc' }
+          { urls: 'turn:turn.anyfirewall.com:443?transport=udp', username: 'webrtc', credential: 'webrtc' },
+          { urls: 'turn:turn.viagenie.ca:443?transport=tcp', username: 'webrtc@live.com', credential: 'muazkh' }
         ]
       }
     };
@@ -66,7 +67,8 @@ class Multiplayer {
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' }
+        { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' },
+        { urls: 'turn:turn.viagenie.ca:443?transport=tcp', username: 'webrtc@live.com', credential: 'muazkh' }
       ];
     }
 
@@ -185,122 +187,157 @@ class Multiplayer {
       self.retryCount = 0;
       self.currentServerIndex = 0;
       
-      var uniqueId = self.generatePeerId();
-      console.log('[PEER] Joining room with client ID:', uniqueId);
-      
-      if (self.peer) {
-        self.peer.destroy();
-        self.peer = null;
+      function attemptJoin() {
+        var uniqueId = self.generatePeerId();
+        console.log('[PEER] Joining room with client ID:', uniqueId);
+        
+        if (self.peer) {
+          self.peer.destroy();
+          self.peer = null;
+        }
+
+        var config = self.getPeerConfig();
+        console.log('[PEER] Using server:', config.host);
+
+        var isSafari = self.browserInfo && self.browserInfo.isSafari;
+        var delay = isSafari ? 500 : 0;
+
+        setTimeout(function() {
+          self.peer = new Peer(uniqueId, config);
+
+          var connectionAttempted = false;
+          var timeoutId = null;
+          var conn = null;
+
+          self.peer.on('open', function() {
+            console.log('[PEER] Peer opened, joining room:', roomId);
+            console.log('[PEER] Server used:', config.host);
+            self.roomId = roomId;
+            self.peerId = self.peer.id;
+            self.isHost = false;
+            self.reconnectAttempts = 0;
+            self.isReconnecting = false;
+
+            if (connectionAttempted) return;
+            connectionAttempted = true;
+
+            conn = self.peer.connect(roomId, {
+              reliable: true
+            });
+            console.log('[PEER] Attempting to connect to:', roomId);
+
+            timeoutId = setTimeout(function() {
+              console.error('[PEER] Connection timeout after 30 seconds');
+              if (conn && conn.open) {
+                console.log('[PEER] Connection is actually open, ignoring timeout');
+                return;
+              }
+              self.retryCount++;
+              if (self.retryCount < 3) {
+                console.log('[PEER] Timeout, retry attempt', self.retryCount);
+                if (self.onJoinError) {
+                  self.onJoinError('Retrying connection... (' + self.retryCount + '/3)');
+                }
+                self.peer.destroy();
+                setTimeout(attemptJoin, 2000);
+              } else {
+                if (self.onJoinError) self.onJoinError('Connection timeout - Host may be offline. Please try again.');
+                reject(new Error('Connection timeout - Host may be offline'));
+              }
+            }, 30000);
+
+            conn.on('open', function() {
+              console.log('[PEER] Connection opened to:', roomId);
+              clearTimeout(timeoutId);
+              self.connections = [conn];
+              self.isConnected = true;
+              self.isReconnecting = false;
+              self.retryCount = 0;
+              resolve();
+
+              conn.on('data', function(data) {
+                console.log('[PEER] Data received from host:', data);
+                if (self.onDataReceived) self.onDataReceived(data, conn);
+              });
+
+              conn.on('close', function() {
+                console.log('[PEER] Connection closed by host');
+                self.isConnected = false;
+                self.handleReconnect();
+                if (self.onPeerDisconnected) self.onPeerDisconnected(conn);
+              });
+
+              if (self.onPeerConnected) self.onPeerConnected(conn);
+            });
+
+            conn.on('error', function(err) {
+              console.error('[PEER] Connection error:', err);
+              clearTimeout(timeoutId);
+              self.retryCount++;
+              if (self.retryCount < 3) {
+                console.log('[PEER] Error, retry attempt', self.retryCount);
+                if (self.onJoinError) {
+                  self.onJoinError('Retrying connection... (' + self.retryCount + '/3)');
+                }
+                self.peer.destroy();
+                setTimeout(attemptJoin, 2000);
+              } else {
+                if (self.onJoinError) self.onJoinError(err.message);
+                reject(err);
+              }
+            });
+          });
+
+          self.peer.on('error', function(err) {
+            console.error('[PEER] Peer error:', err);
+            clearTimeout(timeoutId);
+            
+            if (err.type === 'unavailable-id') {
+              self.retryCount++;
+              if (self.retryCount < self.maxRetries) {
+                console.log('[PEER] ID taken, retrying...', self.retryCount);
+                self.peer.destroy();
+                setTimeout(attemptJoin, 1000);
+              } else {
+                if (self.onJoinError) self.onJoinError('Failed to join after ' + self.maxRetries + ' attempts');
+                reject(new Error('Failed to join room after ' + self.maxRetries + ' attempts'));
+              }
+            } else if (err.type === 'server-error' || err.message.includes('timeout')) {
+              console.log('[PEER] Server error, trying next server...');
+              self.peer.destroy();
+              if (self.tryNextServer()) {
+                setTimeout(attemptJoin, 1000);
+              } else {
+                reject(new Error('All servers failed'));
+              }
+            } else if (err.message && err.message.includes('Could not connect to peer')) {
+              self.retryCount++;
+              if (self.retryCount < 3) {
+                console.log('[PEER] Could not connect, retry attempt', self.retryCount);
+                if (self.onJoinError) {
+                  self.onJoinError('Retrying connection... (' + self.retryCount + '/3)');
+                }
+                self.peer.destroy();
+                setTimeout(attemptJoin, 2000);
+              } else {
+                if (self.onJoinError) self.onJoinError('Host not found - Please check Room ID and try again');
+                reject(new Error('Host not found'));
+              }
+            } else {
+              if (self.onJoinError) self.onJoinError(err.message);
+              reject(err);
+            }
+          });
+
+          self.peer.on('disconnected', function() {
+            console.log('[PEER] Disconnected from PeerJS server');
+            clearTimeout(timeoutId);
+            self.handleReconnect();
+          });
+        }, delay);
       }
 
-      var config = self.getPeerConfig();
-      console.log('[PEER] Using server:', config.host);
-
-      var isSafari = self.browserInfo && self.browserInfo.isSafari;
-      var delay = isSafari ? 500 : 0;
-
-      setTimeout(function() {
-        self.peer = new Peer(uniqueId, config);
-
-        var connectionAttempted = false;
-        var timeoutId = null;
-        var conn = null;
-
-        self.peer.on('open', function() {
-          console.log('[PEER] Peer opened, joining room:', roomId);
-          console.log('[PEER] Server used:', config.host);
-          self.roomId = roomId;
-          self.peerId = self.peer.id;
-          self.isHost = false;
-          self.reconnectAttempts = 0;
-          self.isReconnecting = false;
-
-          if (connectionAttempted) return;
-          connectionAttempted = true;
-
-          conn = self.peer.connect(roomId, {
-            reliable: true
-          });
-          console.log('[PEER] Attempting to connect to:', roomId);
-
-          timeoutId = setTimeout(function() {
-            console.error('[PEER] Connection timeout after 30 seconds');
-            if (conn && conn.open) {
-              console.log('[PEER] Connection is actually open, ignoring timeout');
-              return;
-            }
-            if (self.onJoinError) self.onJoinError('Connection timeout - Host may be offline. Please try again.');
-            reject(new Error('Connection timeout - Host may be offline'));
-          }, 30000);
-
-          conn.on('open', function() {
-            console.log('[PEER] Connection opened to:', roomId);
-            clearTimeout(timeoutId);
-            self.connections = [conn];
-            self.isConnected = true;
-            self.isReconnecting = false;
-            resolve();
-
-            conn.on('data', function(data) {
-              console.log('[PEER] Data received from host:', data);
-              if (self.onDataReceived) self.onDataReceived(data, conn);
-            });
-
-            conn.on('close', function() {
-              console.log('[PEER] Connection closed by host');
-              self.isConnected = false;
-              self.handleReconnect();
-              if (self.onPeerDisconnected) self.onPeerDisconnected(conn);
-            });
-
-            if (self.onPeerConnected) self.onPeerConnected(conn);
-          });
-
-          conn.on('error', function(err) {
-            console.error('[PEER] Connection error:', err);
-            clearTimeout(timeoutId);
-            if (self.onJoinError) self.onJoinError(err.message);
-            reject(err);
-          });
-        });
-
-        self.peer.on('error', function(err) {
-          console.error('[PEER] Peer error:', err);
-          clearTimeout(timeoutId);
-          
-          if (err.type === 'unavailable-id') {
-            self.retryCount++;
-            if (self.retryCount < self.maxRetries) {
-              console.log('[PEER] ID taken, retrying...', self.retryCount);
-              self.peer.destroy();
-              self.joinRoom(roomId, playerName).then(resolve).catch(reject);
-            } else {
-              if (self.onJoinError) self.onJoinError('Failed to join after ' + self.maxRetries + ' attempts');
-              reject(new Error('Failed to join room after ' + self.maxRetries + ' attempts'));
-            }
-          } else if (err.type === 'server-error' || err.message.includes('timeout')) {
-            console.log('[PEER] Server error, trying next server...');
-            self.peer.destroy();
-            if (self.tryNextServer()) {
-              self.joinRoom(roomId, playerName).then(resolve).catch(reject);
-            } else {
-              reject(new Error('All servers failed'));
-            }
-          } else if (err.message && err.message.includes('Could not connect to peer')) {
-            if (self.onJoinError) self.onJoinError('Host not found - Please check Room ID and try again');
-            reject(new Error('Host not found'));
-          } else {
-            if (self.onJoinError) self.onJoinError(err.message);
-            reject(err);
-          }
-        });
-
-        self.peer.on('disconnected', function() {
-          console.log('[PEER] Disconnected from PeerJS server');
-          clearTimeout(timeoutId);
-          self.handleReconnect();
-        });
-      }, delay);
+      attemptJoin();
     });
   }
 
