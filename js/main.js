@@ -61,3 +61,37 @@ function showBrowserWarning(connectionStatusEl) {
   }
   return info;
 }
+
+function getConnectionStatus() {
+  return document.getElementById('connectionStatus');
+}
+
+function updateConnectionStatus(text, status) {
+  var connectionStatus = getConnectionStatus();
+  if (!connectionStatus) return;
+  var dot = connectionStatus.querySelector('.status-dot');
+  var textEl = connectionStatus.querySelector('.status-text');
+  if (dot) {
+    dot.className = 'status-dot ' + status;
+  }
+  if (textEl) {
+    textEl.textContent = text;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var multiplayerControls = document.getElementById('multiplayerControls');
+  if (multiplayerControls) {
+    var existing = document.getElementById('connectionStatus');
+    if (!existing) {
+      var html = `
+        <div id="connectionStatus" class="connection-status-modern">
+          <div class="status-dot disconnected"></div>
+          <span class="status-text">Not connected</span>
+        </div>
+      `;
+      multiplayerControls.insertAdjacentHTML('beforeend', html);
+      showBrowserWarning(document.getElementById('connectionStatus'));
+    }
+  }
+});
