@@ -34,6 +34,7 @@ class Multiplayer {
     this.onConnectionQuality = null;
     this._gameCheckDone = false;
     this._pendingGameCheck = null;
+    this._pendingConn = null;
   }
 
   setGameId(gameId) {
@@ -209,6 +210,7 @@ class Multiplayer {
         self.peer.on('connection', function(conn) {
           console.log('[PEER] Incoming connection from:', conn.peer);
           self._gameCheckDone = false;
+          self._pendingConn = conn;
           self.connections.push(conn);
           self.isConnected = true;
           self.isReconnecting = false;
@@ -288,13 +290,9 @@ class Multiplayer {
               self.handleReconnect();
             }
             if (self.onPeerDisconnected) self.onPeerDisconnected(conn);
+            self._pendingConn = null;
           });
 
-          if (self.onPeerConnected) {
-            self.onPeerConnected(conn);
-          }
-          
-          self._gameCheckDone = false;
           self.send({ type: 'gameCheck', game: self.gameId }, conn);
           
           var checkTimeout = setTimeout(function() {
@@ -304,12 +302,18 @@ class Multiplayer {
                 self.onGameMismatch('timeout');
               }
               conn.close();
+              self._pendingConn = null;
             }
           }, 5000);
           
           self._pendingGameCheck = function() {
             clearTimeout(checkTimeout);
             self.startPing();
+            
+            if (self.onPeerConnected && self._pendingConn) {
+              self.onPeerConnected(self._pendingConn);
+              self._pendingConn = null;
+            }
           };
         });
 
@@ -422,6 +426,7 @@ class Multiplayer {
               self.retryCount = 0;
               
               self._gameCheckDone = false;
+              self._pendingConn = conn;
 
               conn.on('data', function(data) {
                 console.log('[PEER] Data received from host:', data);
@@ -495,12 +500,9 @@ class Multiplayer {
                 self.isConnected = false;
                 self.handleReconnect();
                 if (self.onPeerDisconnected) self.onPeerDisconnected(conn);
+                self._pendingConn = null;
               });
 
-              if (self.onPeerConnected) {
-                self.onPeerConnected(conn);
-              }
-              
               self.send({ type: 'gameCheck', game: self.gameId }, conn);
               
               var checkTimeout = setTimeout(function() {
@@ -510,6 +512,7 @@ class Multiplayer {
                     self.onGameMismatch('timeout');
                   }
                   conn.close();
+                  self._pendingConn = null;
                 }
               }, 5000);
               
@@ -517,6 +520,11 @@ class Multiplayer {
                 clearTimeout(checkTimeout);
                 self.startPing();
                 resolve();
+                
+                if (self.onPeerConnected && self._pendingConn) {
+                  self.onPeerConnected(self._pendingConn);
+                  self._pendingConn = null;
+                }
               };
             });
 
@@ -678,6 +686,7 @@ class Multiplayer {
     this.currentServerIndex = 0;
     this._gameCheckDone = false;
     this._pendingGameCheck = null;
+    this._pendingConn = null;
   }
 
   getStatus() {
