@@ -204,6 +204,9 @@
     var playerName = '';
     var opponentName = '';
 
+    var firstPlayer = 'X';
+    var lastWinner = null;
+
     var WIN_COMBOS = [
       [0, 1, 2], [3, 4, 5], [6, 7, 8],
       [0, 3, 6], [1, 4, 7], [2, 5, 8],
@@ -280,8 +283,19 @@
       board = Array(9).fill(null);
       playerMoves = [];
       opponentMoves = [];
-      currentPlayer = 'X';
       gameActive = true;
+      
+      if (gameMode === 'multi' && isConnected) {
+        if (lastWinner === 'X') {
+          firstPlayer = 'X';
+        } else if (lastWinner === 'O') {
+          firstPlayer = 'O';
+        } else {
+          firstPlayer = (firstPlayer === 'X') ? 'O' : 'X';
+        }
+      }
+      
+      currentPlayer = firstPlayer;
       updateBoard();
       cells.forEach(function(cell) {
         cell.classList.remove('win');
@@ -293,7 +307,7 @@
         updateTurnIndicator();
         setGameStatus('Make your move!', 'waiting');
       } else if (gameMode === 'multi' && isConnected) {
-        isPlayerTurn = (mySymbol === 'X');
+        isPlayerTurn = (currentPlayer === mySymbol);
         enableCells(isPlayerTurn);
         updateTurnIndicator();
         if (isPlayerTurn) {
@@ -329,11 +343,14 @@
         drawScore++;
         setGameStatus("It's a draw! 🤝", 'draw');
         addHistory('Draw');
+        lastWinner = null;
       } else {
         if (result.winner === 'X') {
           xScore++;
+          lastWinner = 'X';
         } else {
           oScore++;
+          lastWinner = 'O';
         }
         var isPlayerWin = (result.winner === mySymbol);
         var winnerName = isPlayerWin ? 'You' : 'Opponent';
@@ -380,7 +397,8 @@
           multiplayer.send({ 
             type: 'gameEnd', 
             result: result,
-            board: board.slice()
+            board: board.slice(),
+            lastWinner: lastWinner
           });
         }
         return true;
@@ -401,7 +419,7 @@
         isPlayerTurn = false;
         enableCells(false);
         setGameStatus('Waiting for opponent...', 'waiting');
-        multiplayer.send({ type: 'move', index: index, player: placedMark });
+        multiplayer.send({ type: 'move', index: index, player: placedMark, firstPlayer: firstPlayer });
       }
 
       return true;
@@ -522,7 +540,17 @@
         } else if (data.type === 'gameEnd') {
           handleOpponentGameEnd(data);
         } else if (data.type === 'reset') {
+          if (data.firstPlayer) {
+            firstPlayer = data.firstPlayer;
+          }
           resetBoardUI();
+          isPlayerTurn = (currentPlayer === mySymbol);
+          enableCells(isPlayerTurn);
+          if (isPlayerTurn) {
+            setGameStatus('Make your move!', 'waiting');
+          } else {
+            setGameStatus('Waiting for opponent...', 'waiting');
+          }
         }
       };
 
@@ -561,6 +589,8 @@
           updateTurnIndicator();
         }
 
+        firstPlayer = 'X';
+        lastWinner = null;
         resetBoardUI();
         updateConnectionStatus('Connected to ' + (opponentName || 'opponent'), 'connected');
       };
@@ -645,6 +675,10 @@
       var index = data.index;
       var player = data.player;
 
+      if (data.firstPlayer) {
+        firstPlayer = data.firstPlayer;
+      }
+
       if (board[index]) return;
 
       if (opponentMoves.length >= 3) {
@@ -665,15 +699,23 @@
 
       currentPlayer = (currentPlayer === 'X') ? 'O' : 'X';
       updateBoard();
-      isPlayerTurn = true;
-      enableCells(true);
+      isPlayerTurn = (currentPlayer === mySymbol);
+      enableCells(isPlayerTurn);
       updateTurnIndicator();
-      setGameStatus('Make your move!', 'waiting');
+      if (isPlayerTurn) {
+        setGameStatus('Make your move!', 'waiting');
+      } else {
+        setGameStatus('Waiting for opponent...', 'waiting');
+      }
     }
 
     function handleOpponentGameEnd(data) {
       var result = data.result;
       var boardState = data.board;
+      
+      if (data.lastWinner !== undefined) {
+        lastWinner = data.lastWinner;
+      }
       
       if (boardState) {
         board = boardState.slice();
@@ -684,11 +726,14 @@
         drawScore++;
         setGameStatus("It's a draw! 🤝", 'draw');
         addHistory('Draw');
+        lastWinner = null;
       } else {
         if (result.winner === 'X') {
           xScore++;
+          lastWinner = 'X';
         } else {
           oScore++;
+          lastWinner = 'O';
         }
         var isPlayerWin = (result.winner === mySymbol);
         var winnerName = isPlayerWin ? 'You' : 'Opponent';
@@ -800,15 +845,17 @@
         enableCells(true);
         setGameStatus('Make your move!', 'waiting');
       } else if (gameMode === 'multi' && isConnected) {
+        lastWinner = null;
+        firstPlayer = (firstPlayer === 'X') ? 'O' : 'X';
         resetBoardUI();
-        isPlayerTurn = (mySymbol === 'X');
+        isPlayerTurn = (currentPlayer === mySymbol);
         enableCells(isPlayerTurn);
         if (isPlayerTurn) {
           setGameStatus('Make your move!', 'waiting');
         } else {
           setGameStatus('Waiting for opponent...', 'waiting');
         }
-        multiplayer.send({ type: 'reset' });
+        multiplayer.send({ type: 'reset', firstPlayer: firstPlayer });
       }
     });
   </script>
