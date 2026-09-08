@@ -89,6 +89,34 @@ function updateConnectionStatus(text, status) {
   }
 }
 
+function setupMultiplayerEvents(multiplayer) {
+  if (!multiplayer) return;
+  
+  var originalOnPeerConnected = multiplayer.onPeerConnected;
+  
+  multiplayer.onPeerConnected = function(conn) {
+    if (originalOnPeerConnected) {
+      originalOnPeerConnected(conn);
+    }
+    
+    multiplayer.startPing();
+    
+    multiplayer.onConnectionQuality = function(quality, latency) {
+      var text = 'Connected';
+      if (quality === 'good') {
+        text = 'Connected ✅ (' + latency + 'ms)';
+        updateConnectionStatus(text, 'connected');
+      } else if (quality === 'medium') {
+        text = 'Connected ⚠️ (' + latency + 'ms)';
+        updateConnectionStatus(text, 'warning');
+      } else if (quality === 'poor') {
+        text = 'Connected ❌ Slow connection';
+        updateConnectionStatus(text, 'error');
+      }
+    };
+  };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   var multiplayerControls = document.getElementById('multiplayerControls');
   if (multiplayerControls) {
@@ -103,5 +131,16 @@ document.addEventListener('DOMContentLoaded', function() {
       multiplayerControls.insertAdjacentHTML('beforeend', html);
       showBrowserWarning(document.getElementById('connectionStatus'));
     }
+  }
+  
+  var originalInit = window.initMultiplayer;
+  if (originalInit) {
+    window.initMultiplayer = function() {
+      if (originalInit) originalInit();
+      var multiplayer = window.multiplayer;
+      if (multiplayer) {
+        setupMultiplayerEvents(multiplayer);
+      }
+    };
   }
 });

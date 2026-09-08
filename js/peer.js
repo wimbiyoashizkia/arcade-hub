@@ -25,6 +25,11 @@ class Multiplayer {
     ];
     this.currentServerIndex = 0;
     this.browserInfo = window.getBrowserInfo ? window.getBrowserInfo() : { isSafari: false };
+    this.latency = 0;
+    this.connectionQuality = 'good';
+    this.pingTimeout = null;
+    this.pingInterval = null;
+    this.onConnectionQuality = null;
   }
 
   generatePeerId() {
@@ -32,6 +37,47 @@ class Multiplayer {
     var random = Math.random().toString(36).substring(2, 8);
     var name = this.playerName.toLowerCase().replace(/[^a-z0-9]/g, '');
     return name + '-' + timestamp + '-' + random;
+  }
+
+  ping() {
+    var self = this;
+    if (!this.isConnected) return;
+    
+    var start = Date.now();
+    this.send({ type: 'ping', timestamp: start });
+    
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+    }
+    
+    this.pingTimeout = setTimeout(function() {
+      self.connectionQuality = 'poor';
+      self.latency = -1;
+      if (self.onConnectionQuality) {
+        self.onConnectionQuality('poor', -1);
+      }
+    }, 3000);
+  }
+
+  startPing() {
+    var self = this;
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+    this.pingInterval = setInterval(function() {
+      self.ping();
+    }, 5000);
+  }
+
+  stopPing() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+      this.pingTimeout = null;
+    }
   }
 
   checkServerStatus() {
@@ -160,6 +206,26 @@ class Multiplayer {
 
           conn.on('data', function(data) {
             console.log('[PEER] Data received from', conn.peer, data);
+            
+            if (data.type === 'pong') {
+              var latency = Date.now() - data.timestamp;
+              self.latency = latency;
+              if (latency < 200) {
+                self.connectionQuality = 'good';
+              } else if (latency < 500) {
+                self.connectionQuality = 'medium';
+              } else {
+                self.connectionQuality = 'poor';
+              }
+              if (self.onConnectionQuality) {
+                self.onConnectionQuality(self.connectionQuality, latency);
+              }
+              if (self.pingTimeout) {
+                clearTimeout(self.pingTimeout);
+              }
+              return;
+            }
+            
             if (self.onDataReceived) {
               self.onDataReceived(data, conn);
             }
@@ -175,7 +241,10 @@ class Multiplayer {
             if (self.onPeerDisconnected) self.onPeerDisconnected(conn);
           });
 
-          if (self.onPeerConnected) self.onPeerConnected(conn);
+          if (self.onPeerConnected) {
+            self.onPeerConnected(conn);
+          }
+          self.startPing();
         });
 
         self.peer.on('error', function(err) {
@@ -289,7 +358,29 @@ class Multiplayer {
 
               conn.on('data', function(data) {
                 console.log('[PEER] Data received from host:', data);
-                if (self.onDataReceived) self.onDataReceived(data, conn);
+                
+                if (data.type === 'pong') {
+                  var latency = Date.now() - data.timestamp;
+                  self.latency = latency;
+                  if (latency < 200) {
+                    self.connectionQuality = 'good';
+                  } else if (latency < 500) {
+                    self.connectionQuality = 'medium';
+                  } else {
+                    self.connectionQuality = 'poor';
+                  }
+                  if (self.onConnectionQuality) {
+                    self.onConnectionQuality(self.connectionQuality, latency);
+                  }
+                  if (self.pingTimeout) {
+                    clearTimeout(self.pingTimeout);
+                  }
+                  return;
+                }
+                
+                if (self.onDataReceived) {
+                  self.onDataReceived(data, conn);
+                }
               });
 
               conn.on('close', function() {
@@ -299,7 +390,10 @@ class Multiplayer {
                 if (self.onPeerDisconnected) self.onPeerDisconnected(conn);
               });
 
-              if (self.onPeerConnected) self.onPeerConnected(conn);
+              if (self.onPeerConnected) {
+                self.onPeerConnected(conn);
+              }
+              self.startPing();
             });
 
             conn.on('error', function(err) {
@@ -432,6 +526,8 @@ class Multiplayer {
   }
 
   disconnect() {
+    this.stopPing();
+    
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -467,7 +563,9 @@ class Multiplayer {
       reconnectAttempts: this.reconnectAttempts,
       isReconnecting: this.isReconnecting,
       currentServer: this.servers[this.currentServerIndex],
-      browser: this.browserInfo
+      browser: this.browserInfo,
+      latency: this.latency,
+      connectionQuality: this.connectionQuality
     };
   }
 }

@@ -1558,3 +1558,13 @@ a {
     gap: 6px;
   }
 }
+
+.status-dot.warning {
+  background: #ffd700;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+.status-dot.error {
+  background: #ff4444;
+  animation: pulse-dot 0.5s ease-in-out infinite;
+}
