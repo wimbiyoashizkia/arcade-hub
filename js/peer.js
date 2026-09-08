@@ -12,6 +12,7 @@ class Multiplayer {
     this.onPeerDisconnected = null;
     this.onRoomCreated = null;
     this.onJoinError = null;
+    this.onGameMismatch = null;
     this.peerId = null;
     this.retryCount = 0;
     this.maxRetries = 3;
@@ -31,6 +32,8 @@ class Multiplayer {
     this.pingTimeout = null;
     this.pingInterval = null;
     this.onConnectionQuality = null;
+    this._gameCheckDone = false;
+    this._pendingGameCheck = null;
   }
 
   setGameId(gameId) {
@@ -205,6 +208,7 @@ class Multiplayer {
 
         self.peer.on('connection', function(conn) {
           console.log('[PEER] Incoming connection from:', conn.peer);
+          self._gameCheckDone = false;
           self.connections.push(conn);
           self.isConnected = true;
           self.isReconnecting = false;
@@ -214,6 +218,41 @@ class Multiplayer {
             
             if (data.game && data.game !== self.gameId) {
               console.log('[PEER] Ignoring data for', data.game, '(expected', self.gameId, ')');
+              return;
+            }
+            
+            if (data.type === 'gameCheck') {
+              if (data.game !== self.gameId) {
+                console.log('[PEER] Game mismatch! Expected', self.gameId, 'got', data.game);
+                if (self.onGameMismatch) {
+                  self.onGameMismatch(data.game);
+                }
+                conn.close();
+                return;
+              }
+              self._gameCheckDone = true;
+              self.send({ type: 'gameCheckResponse', game: self.gameId }, conn);
+              if (self._pendingGameCheck) {
+                self._pendingGameCheck();
+                self._pendingGameCheck = null;
+              }
+              return;
+            }
+            
+            if (data.type === 'gameCheckResponse') {
+              if (data.game !== self.gameId) {
+                console.log('[PEER] Game mismatch response! Expected', self.gameId, 'got', data.game);
+                if (self.onGameMismatch) {
+                  self.onGameMismatch(data.game);
+                }
+                conn.close();
+                return;
+              }
+              self._gameCheckDone = true;
+              if (self._pendingGameCheck) {
+                self._pendingGameCheck();
+                self._pendingGameCheck = null;
+              }
               return;
             }
             
@@ -254,7 +293,24 @@ class Multiplayer {
           if (self.onPeerConnected) {
             self.onPeerConnected(conn);
           }
-          self.startPing();
+          
+          self._gameCheckDone = false;
+          self.send({ type: 'gameCheck', game: self.gameId }, conn);
+          
+          var checkTimeout = setTimeout(function() {
+            if (!self._gameCheckDone) {
+              console.log('[PEER] Game check timeout - disconnecting');
+              if (self.onGameMismatch) {
+                self.onGameMismatch('timeout');
+              }
+              conn.close();
+            }
+          }, 5000);
+          
+          self._pendingGameCheck = function() {
+            clearTimeout(checkTimeout);
+            self.startPing();
+          };
         });
 
         self.peer.on('error', function(err) {
@@ -364,13 +420,49 @@ class Multiplayer {
               self.isConnected = true;
               self.isReconnecting = false;
               self.retryCount = 0;
-              resolve();
+              
+              self._gameCheckDone = false;
 
               conn.on('data', function(data) {
                 console.log('[PEER] Data received from host:', data);
                 
                 if (data.game && data.game !== self.gameId) {
                   console.log('[PEER] Ignoring data for', data.game, '(expected', self.gameId, ')');
+                  return;
+                }
+                
+                if (data.type === 'gameCheck') {
+                  if (data.game !== self.gameId) {
+                    console.log('[PEER] Game mismatch! Expected', self.gameId, 'got', data.game);
+                    if (self.onGameMismatch) {
+                      self.onGameMismatch(data.game);
+                    }
+                    conn.close();
+                    return;
+                  }
+                  self._gameCheckDone = true;
+                  self.send({ type: 'gameCheckResponse', game: self.gameId }, conn);
+                  if (self._pendingGameCheck) {
+                    self._pendingGameCheck();
+                    self._pendingGameCheck = null;
+                  }
+                  return;
+                }
+                
+                if (data.type === 'gameCheckResponse') {
+                  if (data.game !== self.gameId) {
+                    console.log('[PEER] Game mismatch response! Expected', self.gameId, 'got', data.game);
+                    if (self.onGameMismatch) {
+                      self.onGameMismatch(data.game);
+                    }
+                    conn.close();
+                    return;
+                  }
+                  self._gameCheckDone = true;
+                  if (self._pendingGameCheck) {
+                    self._pendingGameCheck();
+                    self._pendingGameCheck = null;
+                  }
                   return;
                 }
                 
@@ -408,7 +500,24 @@ class Multiplayer {
               if (self.onPeerConnected) {
                 self.onPeerConnected(conn);
               }
-              self.startPing();
+              
+              self.send({ type: 'gameCheck', game: self.gameId }, conn);
+              
+              var checkTimeout = setTimeout(function() {
+                if (!self._gameCheckDone) {
+                  console.log('[PEER] Game check timeout - disconnecting');
+                  if (self.onGameMismatch) {
+                    self.onGameMismatch('timeout');
+                  }
+                  conn.close();
+                }
+              }, 5000);
+              
+              self._pendingGameCheck = function() {
+                clearTimeout(checkTimeout);
+                self.startPing();
+                resolve();
+              };
             });
 
             conn.on('error', function(err) {
@@ -567,6 +676,8 @@ class Multiplayer {
     this.peerId = null;
     this.retryCount = 0;
     this.currentServerIndex = 0;
+    this._gameCheckDone = false;
+    this._pendingGameCheck = null;
   }
 
   getStatus() {

@@ -89,10 +89,27 @@ function updateConnectionStatus(text, status) {
   }
 }
 
+function handleGameMismatch(multiplayer, remoteGame) {
+  var gameName = remoteGame || 'unknown';
+  var message = 'Wrong game! You are trying to join a ' + gameName + ' room with this game.';
+  alert(message);
+  multiplayer.disconnect();
+  updateConnectionStatus('Game mismatch - Wrong game', 'error');
+  
+  var gameArea = document.getElementById('gameArea');
+  var multiplayerControls = document.getElementById('multiplayerControls');
+  if (gameArea) gameArea.style.display = 'none';
+  if (multiplayerControls) multiplayerControls.style.display = 'block';
+}
+
 function setupMultiplayerEvents(multiplayer) {
   if (!multiplayer) return;
   
   var originalOnPeerConnected = multiplayer.onPeerConnected;
+  
+  multiplayer.onGameMismatch = function(remoteGame) {
+    handleGameMismatch(multiplayer, remoteGame);
+  };
   
   multiplayer.onPeerConnected = function(conn) {
     if (originalOnPeerConnected) {
