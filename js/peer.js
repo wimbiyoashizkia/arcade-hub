@@ -1,5 +1,6 @@
 class Multiplayer {
-  constructor() {
+  constructor(gameId) {
+    this.gameId = gameId || 'default';
     this.peer = null;
     this.connections = [];
     this.roomId = null;
@@ -32,6 +33,10 @@ class Multiplayer {
     this.onConnectionQuality = null;
   }
 
+  setGameId(gameId) {
+    this.gameId = gameId;
+  }
+
   generatePeerId() {
     var timestamp = Date.now().toString(36);
     var random = Math.random().toString(36).substring(2, 8);
@@ -44,7 +49,7 @@ class Multiplayer {
     if (!this.isConnected) return;
     
     var start = Date.now();
-    this.send({ type: 'ping', timestamp: start });
+    this.send({ type: 'ping', timestamp: start, game: this.gameId });
     
     if (this.pingTimeout) {
       clearTimeout(this.pingTimeout);
@@ -207,6 +212,11 @@ class Multiplayer {
           conn.on('data', function(data) {
             console.log('[PEER] Data received from', conn.peer, data);
             
+            if (data.game && data.game !== self.gameId) {
+              console.log('[PEER] Ignoring data for', data.game, '(expected', self.gameId, ')');
+              return;
+            }
+            
             if (data.type === 'pong') {
               var latency = Date.now() - data.timestamp;
               self.latency = latency;
@@ -359,6 +369,11 @@ class Multiplayer {
               conn.on('data', function(data) {
                 console.log('[PEER] Data received from host:', data);
                 
+                if (data.game && data.game !== self.gameId) {
+                  console.log('[PEER] Ignoring data for', data.game, '(expected', self.gameId, ')');
+                  return;
+                }
+                
                 if (data.type === 'pong') {
                   var latency = Date.now() - data.timestamp;
                   self.latency = latency;
@@ -496,6 +511,8 @@ class Multiplayer {
   send(data, targetConn) {
     targetConn = targetConn || null;
     
+    data.game = this.gameId;
+    
     if (targetConn) {
       if (targetConn && targetConn.open) {
         console.log('[PEER] Sending data to specific peer:', targetConn.peer, data);
@@ -565,7 +582,8 @@ class Multiplayer {
       currentServer: this.servers[this.currentServerIndex],
       browser: this.browserInfo,
       latency: this.latency,
-      connectionQuality: this.connectionQuality
+      connectionQuality: this.connectionQuality,
+      gameId: this.gameId
     };
   }
 }

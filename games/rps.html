@@ -353,7 +353,7 @@
     }
 
     function initMultiplayer() {
-      multiplayer = new Multiplayer();
+      multiplayer = new Multiplayer('rps');
 
       multiplayer.onDataReceived = function(data) {
         console.log('[DATA RECEIVED]', data);

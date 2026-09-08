@@ -519,7 +519,7 @@
     }
 
     function initMultiplayer() {
-      multiplayer = new Multiplayer();
+      multiplayer = new Multiplayer('tictactoe');
 
       multiplayer.onDataReceived = function(data) {
         if (data.type === 'move') {
